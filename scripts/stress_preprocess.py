@@ -11,7 +11,6 @@ looks identical to a good one.
 from __future__ import annotations
 
 import gzip
-import shutil
 import sys
 import tempfile
 from pathlib import Path
