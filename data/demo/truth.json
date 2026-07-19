@@ -1,0 +1,21 @@
+{
+  "sample_id": "GCA_000417485.1",
+  "isolate": "PDT000015895.2",
+  "strain": "Klebsiella pneumoniae DMC0799",
+  "source": "NCBI Pathogen Detection, snapshot PDG000000012.2470",
+  "why_this_genome": [
+    "never appeared in train or calibration for ANY drug -- verified against the",
+    "per-drug grouped splits in models/v1/splits.json",
+    "its SNP cluster (PDS_acc) is absent from every training split, so this is a",
+    "genuinely unseen lineage, not just an unseen sample",
+    "mixed antibiogram (1 resistant / 3 susceptible), so a model that calls",
+    "everything resistant is visibly wrong on it"
+  ],
+  "lab_phenotypes": {
+    "meropenem": "R",
+    "ciprofloxacin": "S",
+    "gentamicin": "S",
+    "trimethoprim_sulfamethoxazole": "S"
+  },
+  "note": "ceftriaxone was not tested for this isolate; the model still predicts it."
+}

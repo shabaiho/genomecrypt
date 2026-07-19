@@ -1,0 +1,81 @@
+# Drug panel + deterministic target gate (Module 02).
+#
+# The gate runs BEFORE the model and can force a no-call:
+#   - target_genes absent from the assembly  -> the drug has nothing to bind ->
+#     "likely to work" would be meaningless -> no-call (reason: target_absent)
+#   - intrinsic_resistance: true             -> species is inherently resistant ->
+#     likely_to_fail without asking the model (reason: intrinsic)
+#
+# target_genes are matched against the *core gene* scan (see gate.py), NOT against
+# AMRFinderPlus output -- AMRFinderPlus reports resistance determinants, not targets.
+
+species: "Klebsiella pneumoniae"
+species_taxgroup: "Klebsiella_pneumoniae"   # --organism value for AMRFinderPlus
+
+# --- decision policy ---------------------------------------------------------
+# mode: high_sensitivity  -> forced binary call at a recall-constrained threshold.
+#                            No abstention band. Missing a resistant isolate is
+#                            treated as much worse than a false alarm.
+#       calibrated_abstain -> the brief's default: abstain in the uncertain band.
+#
+# NOTE: high_sensitivity drops the no-call option, which the challenge brief
+# lists under "Calibrated confidence and a no-call option" and names explicitly
+# as what separates strong from weak submissions ("force every sample into a
+# yes/no answer and hide uncertainty"). Keep the OOD guard on to retain a
+# defensible no-call for genomes unlike anything in training.
+decision:
+  mode: calibrated_abstain
+  target_recall: 0.95      # on the RESISTANT class; hard constraint
+  safety_margin: 0.005     # overshoot on calibration; held-out recall runs lower
+  keep_ood_no_call: true   # still refuse on out-of-distribution genomes
+
+abstain:
+  # Fallback only. The real band is FITTED PER DRUG on the threshold split at
+  # training time (policy.fit_abstain_band) and stored in the bundle -- a fixed
+  # 0.35/0.65 assumes the useful uncertainty always sits around 0.5, which stops
+  # being true as soon as the classes are uneven.
+  low: 0.35
+  high: 0.65
+  target_accuracy: 0.90     # accuracy we want on the calls we DO make
+  max_no_call_rate: 0.30    # refuse to abstain on more than this share
+  min_train_support: 25   # <25 examples of the minority class -> drug is not served at all
+  ood_max_unknown_frac: 0.30  # >30% of detected AMR genes unseen in training -> no_call (reason: ood)
+
+drugs:
+  - id: ciprofloxacin
+    display: Ciprofloxacin
+    klass: fluoroquinolone
+    target_genes: [gyrA, parC]
+    intrinsic_resistance: false
+
+  - id: gentamicin
+    display: Gentamicin
+    klass: aminoglycoside
+    target_genes: [rpsL]          # 30S ribosomal protein S12
+    intrinsic_resistance: false
+
+  - id: meropenem
+    display: Meropenem
+    klass: carbapenem
+    target_genes: [ftsI, mrdA]    # PBP3 / PBP2
+    intrinsic_resistance: false
+
+  - id: ceftriaxone
+    display: Ceftriaxone
+    klass: cephalosporin_3g
+    target_genes: [ftsI]
+    intrinsic_resistance: false
+
+  - id: trimethoprim_sulfamethoxazole
+    display: Trimethoprim/Sulfamethoxazole
+    klass: folate_pathway_inhibitor
+    target_genes: [folA, folP]
+    intrinsic_resistance: false
+
+# Label mapping applied to BV-BRC `resistant_phenotype`. Anything not listed is dropped.
+label_map:
+  Resistant: 1
+  resistant: 1
+  Susceptible: 0
+  susceptible: 0
+  # Intermediate is DROPPED on purpose -- see README "label policy"
