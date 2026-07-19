@@ -9,6 +9,13 @@
 
 <style>
   :root {
+    /* Single, deliberate theme. The page commits to a white-green clinical
+       world, so it does not follow the viewer's dark preference: on a dark OS
+       the palette would stop meaning what it is chosen to mean.
+       color-scheme keeps the browser from restyling form controls and
+       scrollbars for dark mode underneath us. */
+    color-scheme: light;
+
     --ground:   #FBFDFC;   /* near-white, biased green so the neutral reads chosen */
     --surface:  #FFFFFF;
     --line:     #DBE8E1;
@@ -19,23 +26,6 @@
     --clay:     #A9603A;   /* used only where a limitation is stated */
     --shadow:   rgba(15,36,25,.08);
     --helix-bg: 251,253,252;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --ground:#081310; --surface:#0F1E18; --line:#1D3329; --ink:#E3F0E9;
-      --muted:#7D9A8B; --green:#3FD69B; --mint:#7CE8BE; --clay:#D89468;
-      --shadow:rgba(0,0,0,.5); --helix-bg:8,19,16;
-    }
-  }
-  :root[data-theme="light"] {
-    --ground:#FBFDFC; --surface:#FFFFFF; --line:#DBE8E1; --ink:#0F2419;
-    --muted:#5C7A6C; --green:#0E8C5A; --mint:#37B981; --clay:#A9603A;
-    --shadow:rgba(15,36,25,.08); --helix-bg:251,253,252;
-  }
-  :root[data-theme="dark"] {
-    --ground:#081310; --surface:#0F1E18; --line:#1D3329; --ink:#E3F0E9;
-    --muted:#7D9A8B; --green:#3FD69B; --mint:#7CE8BE; --clay:#D89468;
-    --shadow:rgba(0,0,0,.5); --helix-bg:8,19,16;
   }
 
   * { box-sizing: border-box; }
@@ -549,10 +539,6 @@
     })(performance.now());
   }
 
-  // repaint on theme flips (OS preference and the viewer's own toggle)
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refreshTheme);
-  new MutationObserver(refreshTheme).observe(document.documentElement,
-    { attributes: true, attributeFilter: ['data-theme'] });
 })();
 </script>
 
