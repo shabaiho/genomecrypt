@@ -11,9 +11,9 @@ that produced it, a calibrated probability, and the option of returning no verdi
 confirmation by standard laboratory susceptibility testing.**
 
 ```bash
-uv sync --extra train                    # dependencies from uv.lock
-uv run python scripts/acceptance.py      # 25 checks, all pass
-make app                                 # http://localhost:8501
+uv sync --extra train    # dependencies from uv.lock
+make check               # 65 unit tests, 25 acceptance checks, 15 stress cases
+make app                 # http://localhost:8501
 ```
 
 ---
@@ -184,8 +184,14 @@ ceftriaxone to 0.24–0.76 for gentamicin.
 Reproduce the dataset:
 
 ```bash
-uv run python -m gfw.merge_sources --organism Klebsiella
+make fast    # download, train, evaluate, error bars, cohort, promote
 ```
+
+The NCBI snapshot is pinned to `PDG000000012.2470` so a rerun reproduces the
+numbers above. NCBI publishes snapshots incrementally — `.2471` appeared carrying
+only a `Metadata/` directory — so the resolver also verifies that a snapshot has
+both the `AMR/` and `Clusters/` directories before using it. Pass
+`--snapshot latest` to move deliberately.
 
 **Label policy.** Only phenotypes measured in a laboratory are used:
 `laboratory_typing_method` must be broth dilution, MIC, disk diffusion, agar
@@ -256,11 +262,18 @@ beta-lactamases. None of this was supplied as prior knowledge.
 ## 6. Verification
 
 ```bash
+make check                                  # all of the below
+uv run pytest -q                            # 65 unit tests over the pure functions
 uv run python scripts/acceptance.py         # 25 checks against the brief
 uv run python scripts/stress_preprocess.py  # 15 malformed-input cases
-uv run python scripts/stress_assembly.py    # degraded assemblies
 uv run python tests/smoke_test.py           # end to end, no network
+uv run python scripts/stress_assembly.py    # degraded assemblies (needs make tools)
 ```
+
+The unit tests are regression tests: each one locks in a bug that actually
+happened. Three were in the feature rollups, one in file sniffing, one in
+evidence labelling, and one merged two different enzymes into a single blaOXA
+family.
 
 Each input check exists because it caught a failure:
 

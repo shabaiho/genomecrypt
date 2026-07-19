@@ -8,7 +8,7 @@ A model card showing one number per drug is not just incomplete, it is misleadin
 Writes models/<version>/eval/stability.json, which the app's model card renders
 next to the point estimates.
 
-    python -m gfw.stability --version v18 --seeds 8
+    python -m gfw.stability --seeds 8      # defaults to models/current
 """
 from __future__ import annotations
 
