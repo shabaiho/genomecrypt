@@ -80,7 +80,8 @@ def save_annotation(digest: str, tsv_path: Path) -> Path:
     return dest
 
 
-def save_report(digest: str, model_version: str, report: dict) -> Path:
+def save_report(digest: str, model_version: str, report: dict,
+                browser_id: str = "anonymous") -> Path:
     """One report per sample per model version -- retraining does not overwrite
     what an earlier model said about the same genome."""
     d = STORE / "reports"
@@ -91,6 +92,7 @@ def save_report(digest: str, model_version: str, report: dict) -> Path:
     line = {
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "digest": digest,
+        "browser_id": browser_id,
         "model_version": model_version,
         "sample_id": report.get("sample_id"),
         "verdicts": {r["drug_id"]: r["call"] for r in report.get("results", [])},
@@ -100,13 +102,42 @@ def save_report(digest: str, model_version: str, report: dict) -> Path:
     return dest
 
 
-def history(limit: int = 50) -> list[dict]:
-    """Most recent submissions, newest first."""
+def history(browser_id: str | None = None, limit: int = 50) -> list[dict]:
+    """Most recent submissions, newest first, optionally for one browser.
+
+    Identity is a random id kept in the page URL -- enough to keep one visitor's
+    history separate from another's on a shared demo, and deliberately not an
+    account. Nothing is authenticated and nothing here is private.
+    """
     idx = STORE / "index.jsonl"
     if not idx.exists():
         return []
     rows = [json.loads(x) for x in idx.read_text().splitlines() if x.strip()]
-    return rows[::-1][:limit]
+    if browser_id:
+        rows = [r for r in rows if r.get("browser_id") == browser_id]
+    # one entry per sample: the newest run wins
+    seen, out = set(), []
+    for r in reversed(rows):
+        if r["digest"] in seen:
+            continue
+        seen.add(r["digest"])
+        out.append(r)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def load_sample(digest: str) -> tuple[bytes, str, str] | None:
+    """Re-open a stored submission: (raw bytes, original name, file type)."""
+    d = sample_dir(digest)
+    meta_p = d / "meta.json"
+    if not meta_p.exists():
+        return None
+    meta = json.loads(meta_p.read_text())
+    src = d / ("genome.fna" if meta.get("file_type") == "fasta" else "amrfinder.tsv")
+    if not src.exists():
+        return None
+    return src.read_bytes(), meta.get("original_name", src.name), meta.get("file_type", "fasta")
 
 
 def stats() -> dict:

@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 
 import pandas as pd
@@ -33,7 +34,7 @@ from gfw.gate import detect_targets, verify_species  # noqa: E402
 from gfw.predict import CALL_FAIL, CALL_NONE, CALL_WORK, Predictor  # noqa: E402
 from gfw.qc import check_assembly  # noqa: E402
 from gfw.storage import (  # noqa: E402
-    already_annotated, save_annotation, save_report, save_upload,
+    already_annotated, history, load_sample, save_annotation, save_report, save_upload,
 )
 
 st.set_page_config(page_title="Genome Firewall", layout="wide")
@@ -151,6 +152,24 @@ def kpi(col, label: str, value: str, sub: str = "") -> None:
         unsafe_allow_html=True)
 
 
+EXAMPLE = Path(__file__).resolve().parents[1] / "data" / "demo" / "GCA_000417485.1.fna"
+
+
+def browser_id() -> str:
+    """A random id kept in the page URL.
+
+    Deliberately not an account: no email, no password, nothing authenticated.
+    It exists so two people trying the demo on the same server do not see each
+    other's history. Clearing it is as easy as removing it from the address bar.
+    """
+    qp = st.query_params
+    bid = qp.get("id")
+    if not bid:
+        bid = uuid.uuid4().hex[:12]
+        qp["id"] = bid
+    return bid
+
+
 def as_dicts(supporting) -> list[dict]:
     return [s if isinstance(s, dict) else s.__dict__ for s in supporting]
 
@@ -186,15 +205,61 @@ with tab_report:
                    "by standard laboratory susceptibility testing before it informs "
                    "treatment.")
 
+    BID = browser_id()
+
     up = st.file_uploader(
         "Upload an assembled genome (FASTA) or AMRFinderPlus output (TSV)",
         type=["tsv", "txt", "fna", "fasta", "fa"],
         help="File type is detected from the contents, not the name.")
 
-    if up is not None:
+    # A visitor who has never seen a bacterial genome file has nothing to upload,
+    # so the example is offered up front rather than hidden in a repository.
+    if up is None and "pending" not in st.session_state and EXAMPLE.exists():
+        with st.container(border=True):
+            ex1, ex2 = st.columns([3, 1])
+            ex1.markdown(
+                "**Example loaded — Klebsiella pneumoniae DMC0799**  \n"
+                "A 5.4 Mb assembly held out of training entirely. The laboratory "
+                "found it resistant to meropenem and susceptible to ciprofloxacin, "
+                "gentamicin and trimethoprim/sulfamethoxazole.")
+            if ex2.button("Analyse example", type="primary", use_container_width=True):
+                st.session_state["pending"] = (EXAMPLE.read_bytes(), EXAMPLE.name)
+                st.rerun()
+
+    # History for this browser. Clicking an entry re-opens the stored file.
+    past = history(browser_id=BID, limit=12)
+    if past:
+        with st.expander(f"Previously analysed in this browser ({len(past)})"):
+            for h in past:
+                hc1, hc2, hc3 = st.columns([4, 3, 1])
+                hc1.markdown(f"`{h['sample_id']}`")
+                counts = {}
+                for v in h.get("verdicts", {}).values():
+                    counts[v] = counts.get(v, 0) + 1
+                hc2.caption(
+                    f"{h['timestamp'][:16].replace('T', ' ')} · model {h['model_version']}"
+                    f" · {counts.get('likely_to_fail', 0)} avoid,"
+                    f" {counts.get('likely_to_work', 0)} may work,"
+                    f" {counts.get('no_call', 0)} no verdict")
+                if hc3.button("Open", key=f"h_{h['digest']}", use_container_width=True):
+                    loaded = load_sample(h["digest"])
+                    if loaded:
+                        st.session_state["pending"] = (loaded[0], loaded[1])
+                        st.rerun()
+
+    # a re-opened or example file behaves exactly like a fresh upload
+    pending = st.session_state.pop("pending", None)
+    if pending is not None:
+        payload, payload_name = pending
+    elif up is not None:
+        payload, payload_name = up.getvalue(), up.name
+    else:
+        payload = payload_name = None
+
+    if payload is not None:
         with tempfile.TemporaryDirectory() as td:
-            src = Path(td) / up.name
-            src.write_bytes(up.getvalue())
+            src = Path(td) / payload_name
+            src.write_bytes(payload)
             targets = species_check = assembly_qc = None
             problems: list[str] = []
 
@@ -203,7 +268,7 @@ with tab_report:
             # "likely to work" for a blaKPC-positive genome.
             kind = sniff_file_type(src)
             # keep the raw file before anything can fail on it
-            digest = save_upload(up.getvalue(), up.name, kind) if kind != "unknown" else None
+            digest = save_upload(payload, payload_name, kind) if kind != "unknown" else None
             if kind == "protein_fasta":
                 notice("stop", "This is a protein FASTA. Upload the assembled genome "
                                "(nucleotide sequence).")
@@ -247,13 +312,13 @@ with tab_report:
                     "An annotation file was uploaded instead of a genome, so the "
                     "organism and the drug targets were not verified.")
 
-            report = pred.predict_from_tsv(tsv, sample_id=up.name, targets_found=targets,
+            report = pred.predict_from_tsv(tsv, sample_id=payload_name, targets_found=targets,
                                            species_check=species_check,
                                            assembly_qc=assembly_qc)
             tokens = determinants(parse_amrfinder_tsv(tsv))
             n_det = len(tokens)
             if digest:
-                save_report(digest, pred.meta.get("version", version), report.to_dict())
+                save_report(digest, pred.meta.get("version", version), report.to_dict(), BID)
 
         avoid = [r for r in report.results if r.call == CALL_FAIL]
         maybe = [r for r in report.results if r.call == CALL_WORK]
@@ -266,7 +331,7 @@ with tab_report:
         maybe.sort(key=_conf, reverse=True)
 
         # ---- dashboard header ----
-        st.markdown(f"#### {up.name}")
+        st.markdown(f"#### {payload_name}")
         c1, c2, c3, c4 = st.columns(4)
 
         short = " ".join(pred.cfg.species.split()[:2])
@@ -385,7 +450,7 @@ with tab_report:
                 st.dataframe(det, hide_index=True, use_container_width=True)
             st.download_button("Download full report (JSON)",
                                json.dumps(report.to_dict(), indent=2),
-                               file_name=f"{up.name}.genome-firewall.json")
+                               file_name=f"{payload_name}.genome-firewall.json")
 
 # ------------------------------------------------------------ reviewers ---
 with tab_tech:
