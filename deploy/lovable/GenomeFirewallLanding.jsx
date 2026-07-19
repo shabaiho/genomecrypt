@@ -1,0 +1,712 @@
+// Genome Firewall landing page, as a single React component.
+//
+// The design is deliberately single-theme: a white-green clinical palette that
+// does not follow the viewer's dark preference, because on a dark ground the
+// green stops meaning what it is chosen to mean.
+//
+// Everything is self-contained -- no external fonts, no image files, no CDN. The
+// double helix is drawn on a canvas rather than shipped as an asset, so it stays
+// sharp at any size and costs one request less.
+//
+// The two demo buttons carry DEMO_URL. Change it in one place below.
+
+import { useEffect, useRef } from "react";
+
+const DEMO_URL = "http://localhost:8501"; // <-- your deployed Streamlit address
+
+export default function GenomeFirewallLanding() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let raf = 0;
+
+    const canvas = document.getElementById('helix');
+      const ctx = canvas.getContext('2d');
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Two phase-shifted sine strands with base-pair rungs between them: the shape
+      // of the molecule the whole product reads from. Depth drives radius, alpha and
+      // colour mix, so the strand reads as rotating rather than merely sliding.
+      const PAIRS = 132;
+      let W, H, dpr;
+
+      function readVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      }
+      let green = readVar('--green') || '#0E8C5A';
+      let mint = readVar('--mint') || '#37B981';
+      let bg = readVar('--helix-bg') || '251,253,252';
+
+      function hexToRgb(h) {
+        const s = h.replace('#', '');
+        const v = s.length === 3 ? s.split('').map(c => c + c).join('') : s;
+        return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
+      }
+      let C = hexToRgb(green), A = hexToRgb(mint);
+
+      function refreshTheme() {
+        green = readVar('--green') || green;
+        mint = readVar('--mint') || mint;
+        bg = readVar('--helix-bg') || bg;
+        C = hexToRgb(green); A = hexToRgb(mint);
+      }
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const r = canvas.getBoundingClientRect();
+        W = r.width; H = r.height;
+        canvas.width = Math.floor(W * dpr);
+        canvas.height = Math.floor(H * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+
+      function draw(t) {
+        ctx.clearRect(0, 0, W, H);
+
+        // The molecule runs on a diagonal: an axis from lower-left to upper-right,
+        // with the sine displacement taken perpendicular to it. Everything below is
+        // expressed in that rotated frame, so the same helix maths works at any angle.
+        const pad = Math.max(W, H) * 0.16;
+        const x0 = -pad, y0 = H + pad;
+        const x1 = W + pad, y1 = -pad;
+        const ax = x1 - x0, ay = y1 - y0;
+        const len = Math.hypot(ax, ay);
+        const ux = ax / len, uy = ay / len;          // along the axis
+        const px = -uy, py = ux;                     // perpendicular to it
+
+        const amp = Math.min(W, H) * 0.15 + 40;
+        const turns = 3.4;
+
+        for (let i = 0; i < PAIRS; i++) {
+          const u = i / (PAIRS - 1);
+          const bx = x0 + ax * u, by = y0 + ay * u;  // point on the axis
+          const phase = u * turns * Math.PI * 2 + t;
+
+          const s1 = Math.sin(phase), s2 = Math.sin(phase + Math.PI);
+          const p1x = bx + px * s1 * amp, p1y = by + py * s1 * amp;
+          const p2x = bx + px * s2 * amp, p2y = by + py * s2 * amp;
+          const z1 = Math.cos(phase), z2 = Math.cos(phase + Math.PI);
+
+          // base-pair rung, faded when the pair is edge-on to the viewer
+          const face = Math.abs(s1);
+          if (face > 0.06) {
+            const g = ctx.createLinearGradient(p1x, p1y, p2x, p2y);
+            g.addColorStop(0, `rgba(${C.join(',')},${0.26 * face})`);
+            g.addColorStop(1, `rgba(${A.join(',')},${0.26 * face})`);
+            ctx.strokeStyle = g;
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(p1x, p1y); ctx.lineTo(p2x, p2y); ctx.stroke();
+          }
+
+          // backbone nucleotides, radius and opacity driven by depth
+          [[p1x, p1y, z1, 0], [p2x, p2y, z2, 1]].forEach(([x, y, z, strand]) => {
+            const d = (z + 1) / 2;                   // 0 far .. 1 near
+            const rgb = mix(strand ? A : C, strand ? C : A, 0.16 + 0.46 * (1 - d));
+            ctx.beginPath();
+            ctx.fillStyle = `rgba(${rgb.join(',')},${0.16 + d * 0.60})`;
+            ctx.arc(x, y, 1.3 + d * 3.1, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+
+        // wash the centre back toward the page colour so the headline keeps contrast
+        const v = ctx.createRadialGradient(W * 0.5, H * 0.5, H * 0.10,
+                                           W * 0.5, H * 0.5, Math.max(W, H) * 0.62);
+        v.addColorStop(0, `rgba(${bg},0.90)`);
+        v.addColorStop(0.55, `rgba(${bg},0.55)`);
+        v.addColorStop(1, `rgba(${bg},0.10)`);
+        ctx.fillStyle = v;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      if (reduce) {
+        refreshTheme();
+        draw(0.6);
+      } else {
+        let t0 = null;
+        (function frame(ts) {
+          if (t0 === null) t0 = ts;
+          draw(((ts - t0) / 1000) * 0.34);
+          requestAnimationFrame(frame);
+        })(performance.now());
+      }
+
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div className="gfw">
+      <style>{`
+  .gfw {
+      /* Single, deliberate theme. The page commits to a white-green clinical
+         world, so it does not follow the viewer's dark preference: on a dark OS
+         the palette would stop meaning what it is chosen to mean.
+         color-scheme keeps the browser from restyling form controls and
+         scrollbars for dark mode underneath us. */
+      color-scheme: light;
+
+      --ground:   #FBFDFC;   /* near-white, biased green so the neutral reads chosen */
+      --surface:  #FFFFFF;
+      --line:     #DBE8E1;
+      --ink:      #0F2419;
+      --muted:    #5C7A6C;
+      --green:    #0E8C5A;   /* deep clinical green, carries the brand */
+      --mint:     #37B981;   /* lighter green, second strand and highlights */
+      --clay:     #A9603A;   /* used only where a limitation is stated */
+      --shadow:   rgba(15,36,25,.08);
+      --helix-bg: 251,253,252;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--ground);
+      color: var(--ink);
+      font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 17px;
+      line-height: 1.62;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
+
+    .eyebrow {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: .74rem; letter-spacing: .18em; text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ---------------------------------------------------------------- hero */
+    .hero { position: relative; min-height: 92vh; display: grid; place-items: center;
+            overflow: hidden; border-bottom: 1px solid var(--line); }
+    #helix { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .hero-inner { position: relative; text-align: center; padding: 90px 28px; max-width: 820px; }
+
+    h1 {
+      font-size: clamp(2.7rem, 7vw, 5rem);
+      line-height: .98; letter-spacing: -.035em; font-weight: 800;
+      margin: 20px 0 0; text-wrap: balance;
+    }
+    h1 .grad {
+      background: linear-gradient(100deg, var(--green), var(--mint) 88%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .tagline {
+      font-size: clamp(1.05rem, 2.1vw, 1.3rem); color: var(--muted);
+      max-width: 46ch; margin: 22px auto 0; text-wrap: balance;
+    }
+
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 38px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: .88rem; letter-spacing: .06em; text-transform: uppercase;
+      padding: 14px 26px; border-radius: 2px; text-decoration: none;
+      border: 1px solid var(--green); transition: transform .15s ease, background .15s ease;
+    }
+    .btn-solid { background: var(--green); color: var(--ground); font-weight: 600; }
+    .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-ghost:hover { border-color: var(--green); }
+    .btn:focus-visible { outline: 2px solid var(--clay); outline-offset: 3px; }
+
+    .scroll-hint { margin-top: 54px; }
+
+    /* ------------------------------------------------------------ sections */
+    section { padding: 96px 0; border-bottom: 1px solid var(--line); }
+    h2 {
+      font-size: clamp(1.9rem, 4vw, 2.7rem); line-height: 1.08; letter-spacing: -.025em;
+      font-weight: 780; margin: 14px 0 0; text-wrap: balance; max-width: 22ch;
+    }
+    .lede { font-size: 1.16rem; color: var(--muted); max-width: 62ch; margin-top: 20px; }
+    p { max-width: 66ch; }
+
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; margin-top: 46px; }
+    @media (max-width: 820px) { .split { grid-template-columns: 1fr; gap: 34px; } }
+
+    .step { display: flex; gap: 18px; align-items: baseline; padding: 18px 0;
+            border-top: 1px solid var(--line); }
+    .step-n { color: var(--green); font-size: .78rem; letter-spacing: .12em; flex: 0 0 auto; }
+    .step h3 { margin: 0 0 4px; font-size: 1.06rem; font-weight: 650; }
+    .step p { margin: 0; color: var(--muted); font-size: .98rem; }
+
+    /* argument blocks: offset rows, not a card grid */
+    .arg { display: grid; grid-template-columns: 190px 1fr; gap: 34px;
+           padding: 34px 0; border-top: 1px solid var(--line); }
+    @media (max-width: 820px) { .arg { grid-template-columns: 1fr; gap: 12px; } }
+    .arg h3 { margin: 0; font-size: 1.28rem; font-weight: 700; letter-spacing: -.01em; }
+    .arg p { margin: 10px 0 0; color: var(--muted); }
+    .arg .tag { color: var(--green); }
+
+    /* use cases */
+    .uc { padding: 36px 0; border-top: 1px solid var(--line); display: grid;
+          grid-template-columns: 56px 1fr 260px; gap: 30px; align-items: start; }
+    @media (max-width: 900px) { .uc { grid-template-columns: 1fr; gap: 14px; } }
+    .uc-n { font-size: 2.2rem; font-weight: 800; color: var(--line); line-height: 1; }
+    .uc h3 { margin: 0 0 8px; font-size: 1.3rem; font-weight: 700; }
+    .uc p { margin: 0; color: var(--muted); }
+    .uc-note { border-left: 2px solid var(--green); padding-left: 16px; font-size: .93rem;
+               color: var(--muted); }
+    .uc-note b { color: var(--ink); font-weight: 600; }
+
+    /* evidence figures */
+    .figs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+            background: var(--line); border: 1px solid var(--line); margin-top: 44px; }
+    @media (max-width: 820px) { .figs { grid-template-columns: repeat(2, 1fr); } }
+    .fig { background: var(--surface); padding: 26px 22px; }
+    .fig .n { font-size: 2.15rem; font-weight: 750; letter-spacing: -.03em; line-height: 1.1;
+              font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+    .fig .n.cy { color: var(--green); }
+    .fig .k { font-size: .8rem; color: var(--muted); margin-top: 8px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: .95rem; }
+    th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    th { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+         font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+         font-weight: 500; }
+    td.num { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+             font-variant-numeric: tabular-nums; }
+    .tbl-scroll { overflow-x: auto; }
+
+    .caveat { border-left: 2px solid var(--clay); padding: 4px 0 4px 18px; margin-top: 40px;
+              color: var(--muted); max-width: 66ch; }
+
+    .final { text-align: center; padding: 108px 0 120px; border-bottom: none; }
+    .final h2 { margin: 0 auto; max-width: 18ch; }
+    footer { padding: 40px 0 60px; color: var(--muted); font-size: .86rem; }
+    .foot-row { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn { transition: none; }
+    }
+      `}</style>
+
+      <style>
+        .gfw {
+          /* Single, deliberate theme. The page commits to a white-green clinical
+             world, so it does not follow the viewer's dark preference: on a dark OS
+             the palette would stop meaning what it is chosen to mean.
+             color-scheme keeps the browser from restyling form controls and
+             scrollbars for dark mode underneath us. */
+          color-scheme: light;
+
+          --ground:   #FBFDFC;   /* near-white, biased green so the neutral reads chosen */
+          --surface:  #FFFFFF;
+          --line:     #DBE8E1;
+          --ink:      #0F2419;
+          --muted:    #5C7A6C;
+          --green:    #0E8C5A;   /* deep clinical green, carries the brand */
+          --mint:     #37B981;   /* lighter green, second strand and highlights */
+          --clay:     #A9603A;   /* used only where a limitation is stated */
+          --shadow:   rgba(15,36,25,.08);
+          --helix-bg: 251,253,252;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+          margin: 0;
+          background: var(--ground);
+          color: var(--ink);
+          font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          font-size: 17px;
+          line-height: 1.62;
+          -webkit-font-smoothing: antialiased;
+        }
+
+        .mono {
+          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
+
+        .eyebrow {
+          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+          font-size: .74rem; letter-spacing: .18em; text-transform: uppercase;
+          color: var(--muted);
+        }
+
+        /* ---------------------------------------------------------------- hero */
+        .hero { position: relative; min-height: 92vh; display: grid; place-items: center;
+                overflow: hidden; border-bottom: 1px solid var(--line); }
+        #helix { position: absolute; inset: 0; width: 100%; height: 100%; }
+        .hero-inner { position: relative; text-align: center; padding: 90px 28px; max-width: 820px; }
+
+        h1 {
+          font-size: clamp(2.7rem, 7vw, 5rem);
+          line-height: .98; letter-spacing: -.035em; font-weight: 800;
+          margin: 20px 0 0; text-wrap: balance;
+        }
+        h1 .grad {
+          background: linear-gradient(100deg, var(--green), var(--mint) 88%);
+          -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .tagline {
+          font-size: clamp(1.05rem, 2.1vw, 1.3rem); color: var(--muted);
+          max-width: 46ch; margin: 22px auto 0; text-wrap: balance;
+        }
+
+        .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 38px; }
+        .btn {
+          display: inline-flex; align-items: center; gap: 10px;
+          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+          font-size: .88rem; letter-spacing: .06em; text-transform: uppercase;
+          padding: 14px 26px; border-radius: 2px; text-decoration: none;
+          border: 1px solid var(--green); transition: transform .15s ease, background .15s ease;
+        }
+        .btn-solid { background: var(--green); color: var(--ground); font-weight: 600; }
+        .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-ghost:hover { border-color: var(--green); }
+        .btn:focus-visible { outline: 2px solid var(--clay); outline-offset: 3px; }
+
+        .scroll-hint { margin-top: 54px; }
+
+        /* ------------------------------------------------------------ sections */
+        section { padding: 96px 0; border-bottom: 1px solid var(--line); }
+        h2 {
+          font-size: clamp(1.9rem, 4vw, 2.7rem); line-height: 1.08; letter-spacing: -.025em;
+          font-weight: 780; margin: 14px 0 0; text-wrap: balance; max-width: 22ch;
+        }
+        .lede { font-size: 1.16rem; color: var(--muted); max-width: 62ch; margin-top: 20px; }
+        p { max-width: 66ch; }
+
+        .split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; margin-top: 46px; }
+        @media (max-width: 820px) { .split { grid-template-columns: 1fr; gap: 34px; } }
+
+        .step { display: flex; gap: 18px; align-items: baseline; padding: 18px 0;
+                border-top: 1px solid var(--line); }
+        .step-n { color: var(--green); font-size: .78rem; letter-spacing: .12em; flex: 0 0 auto; }
+        .step h3 { margin: 0 0 4px; font-size: 1.06rem; font-weight: 650; }
+        .step p { margin: 0; color: var(--muted); font-size: .98rem; }
+
+        /* argument blocks: offset rows, not a card grid */
+        .arg { display: grid; grid-template-columns: 190px 1fr; gap: 34px;
+               padding: 34px 0; border-top: 1px solid var(--line); }
+        @media (max-width: 820px) { .arg { grid-template-columns: 1fr; gap: 12px; } }
+        .arg h3 { margin: 0; font-size: 1.28rem; font-weight: 700; letter-spacing: -.01em; }
+        .arg p { margin: 10px 0 0; color: var(--muted); }
+        .arg .tag { color: var(--green); }
+
+        /* use cases */
+        .uc { padding: 36px 0; border-top: 1px solid var(--line); display: grid;
+              grid-template-columns: 56px 1fr 260px; gap: 30px; align-items: start; }
+        @media (max-width: 900px) { .uc { grid-template-columns: 1fr; gap: 14px; } }
+        .uc-n { font-size: 2.2rem; font-weight: 800; color: var(--line); line-height: 1; }
+        .uc h3 { margin: 0 0 8px; font-size: 1.3rem; font-weight: 700; }
+        .uc p { margin: 0; color: var(--muted); }
+        .uc-note { border-left: 2px solid var(--green); padding-left: 16px; font-size: .93rem;
+                   color: var(--muted); }
+        .uc-note b { color: var(--ink); font-weight: 600; }
+
+        /* evidence figures */
+        .figs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+                background: var(--line); border: 1px solid var(--line); margin-top: 44px; }
+        @media (max-width: 820px) { .figs { grid-template-columns: repeat(2, 1fr); } }
+        .fig { background: var(--surface); padding: 26px 22px; }
+        .fig .n { font-size: 2.15rem; font-weight: 750; letter-spacing: -.03em; line-height: 1.1;
+                  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+        .fig .n.cy { color: var(--green); }
+        .fig .k { font-size: .8rem; color: var(--muted); margin-top: 8px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 30px; font-size: .95rem; }
+        th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+        th { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+             font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+             font-weight: 500; }
+        td.num { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+                 font-variant-numeric: tabular-nums; }
+        .tbl-scroll { overflow-x: auto; }
+
+        .caveat { border-left: 2px solid var(--clay); padding: 4px 0 4px 18px; margin-top: 40px;
+                  color: var(--muted); max-width: 66ch; }
+
+        .final { text-align: center; padding: 108px 0 120px; border-bottom: none; }
+        .final h2 { margin: 0 auto; max-width: 18ch; }
+        footer { padding: 40px 0 60px; color: var(--muted); font-size: .86rem; }
+        .foot-row { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .btn { transition: none; }
+        }
+      </style>
+
+      <div className="hero">
+        <canvas ref={canvasRef} id="helix" aria-hidden="true" />
+        <div className="hero-inner">
+          <div className="eyebrow">Klebsiella pneumoniae · 5 antibiotics · research prototype</div>
+          <h1>Which antibiotic <span className="grad">will fail</span>, read from the genome</h1>
+          <p className="tagline">
+            Standard susceptibility testing takes one to three days. This reads the
+            assembled genome and reports, per antibiotic, whether resistance is already
+            present — with the gene it found, or an explicit refusal to answer.
+          </p>
+          <div className="cta-row">
+            <a className="btn btn-solid" href={DEMO_URL}>Try the demo</a>
+            <a className="btn btn-ghost" href="#what">Read more</a>
+          </div>
+          <div className="scroll-hint eyebrow">↓ what it does</div>
+        </div>
+      </div>
+
+      <section id="what">
+        <div className="wrap">
+          <div className="eyebrow">What it does</div>
+          <h2>A genome in, an antibiogram-shaped answer out</h2>
+          <p className="lede">
+            The system starts where the sequencing lab finishes: one assembled, quality-checked
+            bacterial genome. It never touches samples, never identifies the species on its own,
+            and never designs or modifies an organism. It reads resistance that is already there.
+          </p>
+
+          <div className="split">
+            <div>
+              <div className="step">
+                <span className="step-n mono">01</span>
+                <div>
+                  <h3>Read the genome</h3>
+                  <p>AMRFinderPlus, the NCBI reference tool, turns the assembly into a list of
+                     named resistance genes and DNA changes.</p>
+                </div>
+              </div>
+              <div className="step">
+                <span className="step-n mono">02</span>
+                <div>
+                  <h3>Weigh the evidence</h3>
+                  <p>One regularised logistic regression per antibiotic. Each gene shifts the
+                     odds of resistance by a fixed, readable amount.</p>
+                </div>
+              </div>
+              <div className="step">
+                <span className="step-n mono">03</span>
+                <div>
+                  <h3>Answer, or decline</h3>
+                  <p>Avoid, may work, or no verdict — with the gene that drove it. Conflicting
+                     or unfamiliar genomes get a refusal instead of a guess.</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="eyebrow">Four checks before any verdict</div>
+              <div className="step">
+                <span className="step-n mono">✓</span>
+                <div><h3>File type</h3><p>Read from the contents, never the extension.</p></div>
+              </div>
+              <div className="step">
+                <span className="step-n mono">✓</span>
+                <div><h3>Assembly completeness</h3><p>An incomplete genome is refused: missing
+                     sequence is indistinguishable from an absent gene.</p></div>
+              </div>
+              <div className="step">
+                <span className="step-n mono">✓</span>
+                <div><h3>Species</h3><p>Chromosomal target genes must match the reference at
+                     95% identity. Sister species are turned away at 89%.</p></div>
+              </div>
+              <div className="step">
+                <span className="step-n mono">✓</span>
+                <div><h3>Familiarity</h3><p>A genome carrying determinants absent from the
+                     training set gets no verdict.</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="why">
+        <div className="wrap">
+          <div className="eyebrow">Why it matters</div>
+          <h2>Resistance is made by the treatment we choose</h2>
+          <p className="lede">
+            Every course of the wrong antibiotic does two things at once: it fails the patient
+            in front of you, and it selects for the strain that reaches the next one.
+          </p>
+
+          <div className="arg">
+            <h3><span className="tag mono">01 /</span> Narrower drugs, sooner</h3>
+            <div>
+              <p>
+                While the culture is running, treatment is a best guess, and the safe guess is
+                broad. Broad-spectrum antibiotics clear the infection and the patient's normal
+                flora with it. Knowing which narrow agent the organism is still susceptible to
+                moves that decision days earlier — the drug that treats the infection while
+                disturbing the least around it.
+              </p>
+            </div>
+          </div>
+
+          <div className="arg">
+            <h3><span className="tag mono">02 /</span> Fewer strains created</h3>
+            <div>
+              <p>
+                Courses that are wrong from the start, and courses that patients stop early,
+                both leave survivors behind. Those survivors are the next resistant lineage.
+                Getting the agent right at the first prescription removes a step from that
+                cycle — and the cycle is what turns treatable infections into untreatable ones.
+              </p>
+            </div>
+          </div>
+
+          <div className="arg">
+            <h3><span className="tag mono">03 /</span> Laboratory work that isn't repeated</h3>
+            <div>
+              <p>
+                Phenotypic susceptibility testing is skilled, consumable-heavy, and slow. When
+                the genome carries an unambiguous determinant — a carbapenemase, a target-site
+                mutation — the answer for that drug is already in hand. The laboratory's time
+                goes to the isolates where the genome does not settle the question.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="who">
+        <div className="wrap">
+          <div className="eyebrow">Who it is for</div>
+          <h2>Three places this changes the workflow</h2>
+
+          <div className="uc">
+            <div className="uc-n mono">01</div>
+            <div>
+              <h3>Hospitals</h3>
+              <p>
+                Triage which isolates genuinely need a full phenotypic panel. Where a
+                carbapenemase is detected outright, or the isolate matches a lineage already
+                characterised, the resistant drugs can be ruled out immediately instead of
+                waiting on a plate. The panel still runs — it just stops being the only source
+                of information for the first 48 hours.
+              </p>
+            </div>
+            <div className="uc-note">
+              <b>Constraint:</b> a genome cannot confirm susceptibility the way a culture can.
+              Ruling a drug <i>out</i> is where the genome is strongest.
+            </div>
+          </div>
+
+          <div className="uc">
+            <div className="uc-n mono">02</div>
+            <div>
+              <h3>Research and reference laboratories</h3>
+              <p>
+                Screen collections before committing bench time: which isolates carry a
+                mechanism worth studying, which carry determinants absent from any reference
+                set, how resistance genes travel together across a set of genomes. Every
+                verdict ships with the coefficients behind it, so it can be argued with.
+              </p>
+            </div>
+            <div className="uc-note">
+              <b>Included:</b> per-drug calibration curves, Brier score, and the full held-out
+              evaluation, not a single headline number.
+            </div>
+          </div>
+
+          <div className="uc">
+            <div className="uc-n mono">03</div>
+            <div>
+              <h3>Field and low-infrastructure settings</h3>
+              <p>
+                Sequencing has become portable faster than laboratory capacity has spread. The
+                trained model is a few hundred kilobytes and runs on a laptop CPU in under a
+                second — no server, no connection required once the genome is assembled. Where
+                a reference laboratory is days away, that changes what is knowable on site.
+              </p>
+            </div>
+            <div className="uc-note">
+              <b>Still required:</b> assembly, and confirmation by testing wherever it is
+              eventually available.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="evidence">
+        <div className="wrap">
+          <div className="eyebrow">Measured, not claimed</div>
+          <h2>What the current prototype actually does</h2>
+          <p className="lede">
+            Every figure below comes from genomes the model never saw during training, split by
+            genetic cluster so that near-identical strains cannot appear on both sides.
+          </p>
+
+          <div className="figs">
+            <div className="fig">
+              <div className="n cy">0.893</div>
+              <div className="k">AUROC, averaged over 8 independent splits (± 0.019)</div>
+            </div>
+            <div className="fig">
+              <div className="n">79%</div>
+              <div className="k">balanced accuracy (± 1.4%); a coin flip scores 50%</div>
+            </div>
+            <div className="fig">
+              <div className="n cy">53/61</div>
+              <div className="k">verdicts matched the laboratory on 15 held-out genomes</div>
+            </div>
+            <div className="fig">
+              <div className="n">2,579</div>
+              <div className="k">genomes, 9,186 laboratory-confirmed measurements</div>
+            </div>
+          </div>
+
+          <div className="tbl-scroll">
+            <table>
+              <thead>
+                <tr><th>Antibiotic</th><th>AUROC</th><th>Balanced accuracy</th><th>No verdict</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Meropenem</td><td className="num">0.909</td><td className="num">0.81</td><td className="num">23%</td></tr>
+                <tr><td>Ceftriaxone</td><td className="num">0.909</td><td className="num">0.79</td><td className="num">14%</td></tr>
+                <tr><td>Gentamicin</td><td className="num">0.895</td><td className="num">0.79</td><td className="num">14%</td></tr>
+                <tr><td>Ciprofloxacin</td><td className="num">0.892</td><td className="num">0.79</td><td className="num">19%</td></tr>
+                <tr><td>Trimethoprim / sulfamethoxazole</td><td className="num">0.862</td><td className="num">0.77</td><td className="num">30%</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="caveat">
+            <b>What this is not.</b> A research prototype covering one species and five drugs.
+            It has not been validated for clinical use, it does not replace susceptibility
+            testing, and it declines about a fifth of the questions it is asked. Those
+            refusals are the point: a confident wrong answer about an antibiotic is worse than
+            no answer at all.
+          </div>
+        </div>
+      </section>
+
+      <section className="final">
+        <div className="wrap">
+          <div className="eyebrow">Try it</div>
+          <h2>Upload a genome, read the report</h2>
+          <p className="lede" style="margin: 20px auto 0;">
+            A held-out <i>K. pneumoniae</i> assembly is included. Two sister species are there
+            too, so you can watch the system refuse them.
+          </p>
+          <div className="cta-row">
+            <a className="btn btn-solid" href={DEMO_URL}>Open the demo</a>
+            <a className="btn btn-ghost" href="#what">Back to the top</a>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div className="wrap foot-row">
+          <span className="mono">Genome Firewall · research prototype</span>
+          <span className="mono">Not for clinical use · confirm every result by laboratory testing</span>
+        </div>
+      </footer>
+    </div>
+  );
+}

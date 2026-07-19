@@ -1,0 +1,42 @@
+# One origin for both pages, so the whole thing is a single link.
+#
+#   /        the landing page
+#   /app     the Streamlit demo
+#
+# WHY THE ROUTING IS THIS SHAPE. Streamlit runs with --server.baseUrlPath=app.
+# Its canonical path is /app/ WITH the trailing slash: /app answers 307 to /app/,
+# and the assets live at /app/static/..., which is exactly where the page's
+# relative "./static/..." links resolve to from /app/. Nothing is served at the
+# root except the landing.
+#
+# The landing therefore links to /app/ rather than /app. Not cosmetic: the 307
+# is emitted by Streamlit, which cannot see that the tunnel terminated TLS, so it
+# redirects to http:// and the browser leaves HTTPS for a moment. Linking to the
+# canonical path means no redirect happens at all.
+#
+# X-Forwarded-Proto is set below so anything else Streamlit builds stays https.
+
+{
+	# admin stays on its default localhost:2019 so the config can be reloaded
+	# without restarting -- a restart means a new tunnel address.
+	auto_https off
+}
+
+:{$PROXY_PORT:8080} {
+	handle / {
+		root * {$LANDING_DIR:landing}
+		rewrite * /index.html
+		file_server
+	}
+
+	handle {
+		reverse_proxy localhost:{$DEMO_PORT:8501} {
+			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
+		}
+	}
+
+	log {
+		output file /tmp/genome-firewall-proxy.log
+		format console
+	}
+}

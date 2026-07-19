@@ -1,5 +1,45 @@
 # Deployment
 
+## Option A — everything local, one public HTTPS address
+
+Nothing is deployed. Both pages run on this machine and a Cloudflare tunnel
+publishes them under a single address, landing at `/` and demo at `/app/`.
+
+```bash
+./scripts/public.sh
+```
+
+It prints the address. No account, no signup — `cloudflared` and `caddy` are
+single binaries under `.tools/bin`, installed without root.
+
+**The address changes when the tunnel restarts.** It holds for as long as the
+process lives, so start it once and copy the address. Caddy's config can be
+reloaded in place (`caddy reload --config deploy/Caddyfile`) without taking the
+tunnel down. To fix the address permanently you need a Cloudflare account and a
+domain:
+
+```bash
+cloudflared tunnel login
+cloudflared tunnel create genome-firewall
+cloudflared tunnel route dns genome-firewall demo.yourdomain.com
+cloudflared tunnel run --url http://localhost:8080 genome-firewall
+```
+
+Two things this setup gets right, both found by testing rather than by reading:
+
+- The landing links to `/app/` **with** the trailing slash. Streamlit's canonical
+  path is `/app/`; `/app` answers 307. That redirect is built by Streamlit, which
+  cannot see that the tunnel terminated TLS, so it points at `http://` and the
+  browser drops out of HTTPS for a moment. Linking to the canonical path avoids
+  the redirect entirely.
+- Only the exact root is the landing; everything else is proxied. Routing just
+  `/app*` left the browser fetching `/static/...`, missing the proxy and
+  rendering a blank page — while `curl` reported 200 the whole way.
+
+---
+
+## Option B — hosted
+
 Two pieces, deployed separately.
 
 | | Where | What it needs |

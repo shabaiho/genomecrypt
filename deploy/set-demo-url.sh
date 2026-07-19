@@ -15,10 +15,14 @@ NEW="${1:-http://localhost:8501}"
 
 [ -f "$FILE" ] || { echo "not found: $FILE"; exit 1; }
 
-# strip any trailing slash so the two forms do not both end up in the file
-NEW="${NEW%/}"
+# strip a trailing slash only from a full URL; a bare path like /app is passed
+# through untouched, since stripping it there silently rewrote /app/ back to /app
+case "$NEW" in
+  http*) NEW="${NEW%/}" ;;
+esac
 
-current=$(grep -oE 'href="https?://[^"]*"' "$FILE" \
+# the current target may be a full URL or a bare path like /app
+current=$(grep -oE 'href="(https?://|/)[^"#]*"' "$FILE" \
           | grep -vE 'github|ncbi|bv-brc' | head -1 | sed 's/href="//; s/"//')
 
 if [ -z "$current" ]; then
