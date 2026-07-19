@@ -150,6 +150,23 @@ def main() -> None:
         check("safety: species guard rejects a sister species", None,
               "AMRFinderPlus/blastn not on PATH")
 
+    # ---- preprocessing robustness (scripts/stress_preprocess.py covers 15 cases) ----
+    hdr_only = ROOT / "data" / "demo" / "_hdr_only.tsv"
+    hdr_only.write_text(parse_amrfinder_tsv(tsv).columns.to_series().str.cat(sep="\t") + "\n")
+    try:
+        r0 = pred.predict_from_tsv(hdr_only, "empty-annotation")
+        check("safety: zero determinants is refused, not called susceptible",
+              all(x.call == CALL_NONE for x in r0.results),
+              "header-only AMRFinderPlus output -> 5/5 no_call")
+    finally:
+        hdr_only.unlink(missing_ok=True)
+
+    from gfw.qc import check_assembly
+    qc_ok = check_assembly(DEMO / "GCA_000417485.1.fna")
+    check("safety: assembly QC accepts a complete genome", qc_ok["ok"],
+          f"{qc_ok['total_bp'] / 1e6:.2f} Mb in {qc_ok['n_contigs']} contigs, "
+          f"N50 {qc_ok['n50']:,}")
+
     # ---- defensive by construction ----
     src = " ".join((ROOT / "src" / "gfw" / f).read_text()
                    for f in ("predict.py", "train.py", "features.py"))

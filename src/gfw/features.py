@@ -64,14 +64,35 @@ def sniff_file_type(path: Path) -> str:
     """
     try:
         with Path(path).open("r", errors="replace") as fh:
-            head = [fh.readline() for _ in range(3)]
+            # skip leading blank lines -- some assemblers and every round-trip
+            # through a text editor can leave them, and reading only line 1 then
+            # reported a perfectly good genome as an unknown file type
+            lines: list[str] = []
+            for _ in range(64):
+                ln = fh.readline()
+                if not ln:
+                    break
+                if ln.strip() or lines:
+                    lines.append(ln)
+                if len(lines) >= 8:
+                    break
     except OSError:
         return "unknown"
 
-    first = (head[0] or "").lstrip()
-    if first.startswith(">"):
+    if not lines:
+        return "unknown"
+
+    if lines[0].lstrip().startswith(">"):
+        # nucleotide or protein? amrfinder is invoked in --nucleotide mode, so a
+        # protein FASTA would be garbage in, garbage out
+        seq = "".join(ln.strip() for ln in lines[1:] if not ln.startswith(">"))
+        if seq:
+            acgtn = sum(c in "ACGTUNacgtun" for c in seq)
+            if acgtn / len(seq) < 0.85:
+                return "protein_fasta"
         return "fasta"
-    cols = {c.strip() for c in (head[0] or "").split("\t")}
+
+    cols = {c.strip() for c in lines[0].split("\t")}
     # any AMRFinderPlus version identifies itself by these column names
     if cols & {"Element symbol", "Gene symbol", "Protein identifier", "Protein id"}:
         return "amrfinder_tsv"
@@ -88,7 +109,11 @@ def require_file_type(path: Path, expected: str) -> None:
 
 
 def parse_amrfinder_tsv(path: Path) -> pd.DataFrame:
-    df = pd.read_csv(path, sep="\t", dtype=str).fillna("")
+    try:
+        df = pd.read_csv(path, sep="\t", dtype=str).fillna("")
+    except pd.errors.EmptyDataError as e:
+        # an empty file is not "a genome with no resistance genes"
+        raise WrongFileType(f"{path.name} is empty -- no AMRFinderPlus output to read") from e
     df = df.rename(columns=COLUMN_ALIASES)
     for c in (COL_COVERAGE, COL_IDENTITY):
         if c in df.columns:

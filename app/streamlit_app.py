@@ -21,6 +21,7 @@ from gfw.config import DEFAULT_MODEL_DIR, read_json  # noqa: E402
 from gfw.features import determinants, parse_amrfinder_tsv, sniff_file_type  # noqa: E402
 from gfw.predict import CALL_FAIL, CALL_NONE, CALL_WORK, Predictor  # noqa: E402
 from gfw.gate import detect_targets, verify_species  # noqa: E402
+from gfw.qc import check_assembly  # noqa: E402
 
 st.set_page_config(page_title="Genome Firewall", page_icon="🧬", layout="wide")
 
@@ -92,11 +93,16 @@ with tab_predict:
             src.write_bytes(up.getvalue())
             targets = None
             species_check = None
+            assembly_qc = None
 
             # Detected from CONTENT. Trusting a mode toggle let a FASTA be parsed
             # as a TSV, which yields zero determinants and a confident
             # "likely to work" for every drug on a blaKPC-positive genome.
             kind = sniff_file_type(src)
+            if kind == "protein_fasta":
+                st.error("This looks like a PROTEIN FASTA. The pipeline annotates "
+                         "nucleotide assemblies; upload the genome, not its proteome.")
+                st.stop()
             if kind == "unknown":
                 st.error("This file is neither a FASTA nor AMRFinderPlus output. "
                          "A FASTA starts with '>'; an AMRFinderPlus TSV has an "
@@ -108,8 +114,15 @@ with tab_predict:
                     st.error("FASTA uploaded but AMRFinderPlus is not installed, so it "
                              "cannot be converted into features. Run `make tools`.")
                     st.stop()
-                st.success("Detected: assembled FASTA — running the full pipeline, "
-                           "target gate included.")
+                assembly_qc = check_assembly(src)
+                if not assembly_qc["ok"]:
+                    st.error(f"Assembly QC failed: {assembly_qc['reason']}", icon="🚫")
+                for w in assembly_qc.get("warnings", []):
+                    st.warning(w, icon="⚠️")
+                st.success(
+                    f"Detected: assembled FASTA — {assembly_qc['total_bp'] / 1e6:.2f} Mb "
+                    f"in {assembly_qc['n_contigs']} contigs (N50 {assembly_qc['n50']:,} bp). "
+                    f"Running the full pipeline, target gate included.")
                 with st.spinner("Running AMRFinderPlus…"):
                     tsv = run_amrfinder(src, Path(td) / "amr.tsv", pred.cfg.species_taxgroup)
                 try:
@@ -131,7 +144,8 @@ with tab_predict:
                         "target-verified. Upload the FASTA for the full pipeline.", icon="ℹ️")
 
             report = pred.predict_from_tsv(tsv, sample_id=up.name, targets_found=targets,
-                                           species_check=species_check)
+                                           species_check=species_check,
+                                           assembly_qc=assembly_qc)
 
             # A genome with no AMR determinants at all is possible but rare -- far
             # more often it means the input was misread. Say so instead of

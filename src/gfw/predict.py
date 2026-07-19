@@ -107,12 +107,14 @@ class Predictor:
         sample_id: str,
         targets_found: set[str] | None = None,
         species_check: dict | None = None,
+        assembly_qc: dict | None = None,
     ) -> SampleReport:
         # refuse a FASTA handed in as a TSV rather than silently returning
         # "no resistance found" for every drug
         require_file_type(tsv_path, "amrfinder_tsv")
         tokens = determinants(parse_amrfinder_tsv(tsv_path))
-        return self.predict_from_tokens(tokens, sample_id, targets_found, species_check)
+        return self.predict_from_tokens(tokens, sample_id, targets_found,
+                                        species_check, assembly_qc)
 
     def predict_from_tokens(
         self,
@@ -120,7 +122,21 @@ class Predictor:
         sample_id: str,
         targets_found: set[str] | None = None,
         species_check: dict | None = None,
+        assembly_qc: dict | None = None,
     ) -> SampleReport:
+        # Assembly too incomplete -> refuse everything. Missing sequence reads as
+        # missing resistance, which is the dangerous direction.
+        if assembly_qc is not None and not assembly_qc.get("ok", True):
+            return SampleReport(
+                sample_id=sample_id, species=self.cfg.species,
+                model_version=self.meta.get("version", "unknown"),
+                results=[DrugReport(d.id, d.display, CALL_NONE, None, EV_NONE,
+                                    "assembly_qc_failed",
+                                    notes=[assembly_qc.get("reason", "")])
+                         for d in self.cfg.drugs],
+                unknown_determinants=[],
+            )
+
         # Wrong species -> refuse everything. No per-drug reasoning applies when
         # the organism is not the one the model was trained on.
         if species_check is not None and not species_check.get("ok", True):
@@ -134,6 +150,24 @@ class Predictor:
                 results=[DrugReport(d.id, d.display, CALL_NONE, None, EV_NONE,
                                     "wrong_species", notes=[note]) for d in self.cfg.drugs],
                 unknown_determinants=sorted(t for t in tokens if t not in set(self.schema)),
+            )
+
+        # ZERO determinants is not evidence of susceptibility. Every K. pneumoniae
+        # carries some AMR determinant (fosA and a chromosomal blaSHV are close to
+        # universal), so an empty set means the annotation failed or the input was
+        # not what we think -- a header-only AMRFinderPlus TSV produced a confident
+        # "likely to work" before this guard existed.
+        if not tokens:
+            note = ("No AMR determinants at all were detected. For this species that "
+                    "indicates a failed or empty annotation, not a susceptible isolate. "
+                    "Re-run the annotation before interpreting anything.")
+            return SampleReport(
+                sample_id=sample_id, species=self.cfg.species,
+                model_version=self.meta.get("version", "unknown"),
+                results=[DrugReport(d.id, d.display, CALL_NONE, None, EV_NONE,
+                                    "no_determinants_detected", notes=[note])
+                         for d in self.cfg.drugs],
+                unknown_determinants=[],
             )
 
         x, unknown = vectorize(tokens, self.schema)
