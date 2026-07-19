@@ -329,7 +329,22 @@ Each was implemented and measured, paired across splits.
 
 ---
 
-## 9. Repository
+## 9. Deployment
+
+| Piece | Target | Notes |
+|---|---|---|
+| Demo (Streamlit) | Hugging Face Spaces, Docker SDK | `deploy/Dockerfile`, image built and exercised end to end |
+| Landing (static) | Lovable | `landing/index.html`, self-contained |
+
+`deploy/DEPLOY.md` has the exact steps. Point the landing at a live demo with
+`./deploy/set-demo-url.sh <url>` — it ships with localhost, which sends every
+visitor nowhere once deployed.
+
+Docker appears only in `deploy/`. Local development stays on uv.
+
+---
+
+## 10. Repository
 
 ```
 src/gfw/           ncbi_dataset, merge_sources   data assembly
@@ -351,7 +366,7 @@ model said.
 
 ---
 
-## 10. Conclusion
+## 11. Conclusion
 
 The system predicts resistance for five antibiotics in *K. pneumoniae* at AUROC
 0.893 ± 0.019 on genomes from lineages absent from training, using 8–31 named genes
