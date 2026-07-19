@@ -380,3 +380,13 @@ biology rather than dataset structure.
 
 Four input checks refuse genomes the model cannot answer for. Each was added after
 a measured case in which the system produced a confident and wrong answer.
+I also want to add a crucial point about how this was built and where it is going next.
+
+Before I wrote a single line of code for the front-end, I ran a practical experiment. I called a friend of mine - a doctor with several years of clinical experience -and consulted with him on exactly how a medical interface should look and behave. I wanted to know what actually works in a hospital setting. That conversation is the reason our UI is strictly focused on clear, actionable verdicts rather than overwhelming the physician with raw genomic data.
+
+Regarding the AI architecture: right now, our L1-regularized logistic regression is exactly what we need to prove causality and keep the model entirely transparent. But if we win this hackathon and secure the resources to take GenomeCrypt further, my immediate next step is to train Transformer models.
+
+Transformers are dominating the bioinformatics field right now for a very specific reason. Through the cross-attention mechanism, they don’t just see a flat, isolated list of genes. They can actually capture the complex relationships and communication between different genomic sequences.
+
+Since bacteria are fundamentally complex protein structures, a Transformer could model how these proteins physically interact and fold. This deep structural understanding would allow us to predict with incredible precision exactly how to disrupt the bacteria using the most effective class of antibiotics.
+
