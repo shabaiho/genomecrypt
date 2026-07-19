@@ -3,7 +3,11 @@
 data/raw/
 data/interim/
 data/processed/
+# Model bundles are build artefacts, but the served one has to ship: without it
+# a fresh clone cannot start the app. 164 KB.
 models/*/
+!models/v19/
+!models/current
 !models/.gitkeep
 __pycache__/
 *.pyc
