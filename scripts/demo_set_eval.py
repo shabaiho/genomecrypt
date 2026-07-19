@@ -84,7 +84,20 @@ def main() -> None:
         print(f"\n{dangerous} of {len(misses)} errors are in the dangerous direction "
               f"(resistance missed).")
 
-    print("\nRESEARCH PROTOTYPE - every result requires laboratory confirmation.")
+    out = ROOT / "models" / VERSION / "eval" / "demo_cohort.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({
+        "n_genomes": spec["n_genomes"],
+        "n_labels": n_all,
+        "n_called": n_call,
+        "n_correct": int(correct),
+        "accuracy": round(correct / max(1, n_call), 4),
+        "no_call_rate": round(1 - n_call / n_all, 4),
+        "dangerous_errors": int((misses.lab == "R").sum()) if len(misses) else 0,
+        "label_balance": {"R": int(res), "S": int(n_all - res)},
+    }, indent=2))
+    print(f"\nwrote {out}")
+    print("RESEARCH PROTOTYPE - every result requires laboratory confirmation.")
 
 
 if __name__ == "__main__":

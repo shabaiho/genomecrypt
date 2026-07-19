@@ -1,8 +1,9 @@
-"""Genome Firewall -- decision-report demo (Module 03).
+"""Genome Firewall -- antibiotic-response report (Module 03).
 
-Runs in the light container: no AMRFinderPlus needed if the user uploads a TSV.
-Model weights are read from models/<version>/ mounted at runtime, so swapping a
-model never means rebuilding the image.
+Two audiences, two views, and they need opposite things. A clinician needs a
+short ranked answer and a reason in words. A reviewer needs calibration curves,
+AUROC and coefficients. Serving both on one screen served neither, so the
+default view is clinical and everything quantitative lives behind a tab.
 """
 from __future__ import annotations
 
@@ -18,22 +19,30 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from gfw.annotate import amrfinder_available, run_amrfinder  # noqa: E402
 from gfw.config import DEFAULT_MODEL_DIR, read_json  # noqa: E402
+from gfw.explain import (  # noqa: E402
+    detected_mechanisms, headline_evidence, supporting_sentences,
+)
 from gfw.features import determinants, parse_amrfinder_tsv, sniff_file_type  # noqa: E402
-from gfw.predict import CALL_FAIL, CALL_NONE, CALL_WORK, Predictor  # noqa: E402
 from gfw.gate import detect_targets, verify_species  # noqa: E402
+from gfw.predict import CALL_FAIL, CALL_NONE, CALL_WORK, Predictor  # noqa: E402
 from gfw.qc import check_assembly  # noqa: E402
 
 st.set_page_config(page_title="Genome Firewall", page_icon="🧬", layout="wide")
 
-CALL_STYLE = {
-    CALL_FAIL: ("🔴", "Likely to FAIL"),
-    CALL_WORK: ("🟢", "Likely to WORK"),
-    CALL_NONE: ("⚪", "NO-CALL"),
-}
-EVIDENCE_LABEL = {
-    "known_determinant": "Known resistance gene / DNA change detected",
-    "statistical_only": "Statistical association only — not an established cause",
-    "no_signal": "No known resistance signal found",
+# Why a drug lands in a group, in words the report can print verbatim.
+NO_ANSWER_REASON = {
+    "low_confidence": "The evidence is mixed. The system will not guess.",
+    "ood": "This genome carries resistance genes the system has never seen. "
+           "Anything it said here would be extrapolation.",
+    "target_absent": "The gene this drug acts on was not found in the genome.",
+    "wrong_species": "This genome is not the species the system was built for.",
+    "assembly_qc_failed": "The assembly is incomplete, so absent genes cannot be "
+                          "told apart from missing sequence.",
+    "no_determinants_detected": "No resistance markers were found at all, which "
+                                "points to a failed annotation rather than a "
+                                "susceptible isolate.",
+    "drug_not_covered": "This drug is not covered by the current model.",
+    "intrinsic": "This species is naturally resistant to this drug.",
 }
 
 
@@ -46,16 +55,32 @@ def bundles() -> list[str]:
     return sorted(p.name for p in DEFAULT_MODEL_DIR.glob("*") if (p / "metadata.json").exists())
 
 
-st.title("🧬 Genome Firewall")
-st.caption("Genome-based antibiotic-response prediction — research prototype")
+def track_record(version: str) -> str | None:
+    """How often calls like these turned out right, read from measured files.
 
-st.error(
-    "**RESEARCH PROTOTYPE — NOT FOR CLINICAL USE.** Every result below must be "
-    "confirmed by standard laboratory antimicrobial susceptibility testing before "
-    "it informs any treatment decision. This tool is decision support for a trained "
-    "healthcare or laboratory professional; it never makes a treatment decision.",
-    icon="⚠️",
-)
+    Never hardcode the numbers here -- they go stale the moment the model is
+    retrained, and a stale accuracy claim on a clinical screen is worse than none.
+    """
+    ev = DEFAULT_MODEL_DIR / version / "eval" / "stability.json"
+    if not ev.exists():
+        return None
+    stab = read_json(ev)
+    s = stab["overall"]
+    line = (f"Across {stab['seeds']} independent evaluations on bacteria the system "
+            f"had never seen, its balanced accuracy was "
+            f"{s['balanced_accuracy']['mean']:.0%} "
+            f"(± {s['balanced_accuracy']['std']:.1%}).")
+    cohort = DEFAULT_MODEL_DIR / version / "eval" / "demo_cohort.json"
+    if cohort.exists():
+        c = read_json(cohort)
+        line += (f" On {c['n_genomes']} held-out genomes it made {c['n_called']} calls, "
+                 f"{c['n_correct']} of which matched the laboratory result "
+                 f"({c['accuracy']:.0%}).")
+    return line
+
+
+st.title("🧬 Genome Firewall")
+st.caption("Antibiotic-response prediction from a bacterial genome — research prototype")
 
 available = bundles()
 if not available:
@@ -63,186 +88,235 @@ if not available:
     st.stop()
 
 with st.sidebar:
-    version = st.selectbox("Model bundle", available)
+    version = st.selectbox("Model", available)
     pred = load_predictor(version)
-    st.markdown(f"**Species:** {pred.cfg.species}")
-    st.markdown(f"**Drugs served:** {', '.join(pred.served_drugs) or 'none'}")
+    st.markdown(f"**Organism:** {pred.cfg.species}")
+    st.markdown(f"**Antibiotics:** {len(pred.served_drugs)}")
     not_served = pred.meta.get("drugs_not_served", {})
     if not_served:
-        st.markdown("**Not covered:**")
-        for k, v in not_served.items():
-            st.caption(f"· {k} — {v}")
+        st.caption("Not covered: " + ", ".join(not_served))
     st.divider()
-    st.caption(f"git {pred.meta.get('git_sha')} · {pred.meta.get('model')}")
+    st.caption(f"build {pred.meta.get('git_sha')}")
 
-tab_predict, tab_card = st.tabs(["Predict", "Model card"])
+tab_report, tab_tech = st.tabs(["Antibiotic report", "For reviewers"])
 
-with tab_predict:
-    st.caption("Upload an assembled genome (FASTA) or a precomputed AMRFinderPlus "
-               "TSV — the file type is detected from its contents.")
-    if not amrfinder_available():
-        st.info("AMRFinderPlus is not on PATH, so FASTA input is unavailable. Run "
-                "`make tools`, then `source .tools/env.sh` before starting the app — "
-                "or upload a precomputed TSV.")
+# ---------------------------------------------------------------- report ---
+with tab_report:
+    st.info(
+        "**Decision support only.** Send the sample for standard susceptibility "
+        "testing regardless of what this page says. Nothing here replaces a "
+        "culture result or a clinician's judgement.",
+        icon="⚠️",
+    )
 
-    up = st.file_uploader("Upload file", type=["tsv", "txt", "fna", "fasta", "fa"])
+    up = st.file_uploader(
+        "Upload an assembled genome (FASTA) or AMRFinderPlus output (TSV)",
+        type=["tsv", "txt", "fna", "fasta", "fa"],
+        help="The file type is detected from its contents, not its name.",
+    )
 
     if up is not None:
         with tempfile.TemporaryDirectory() as td:
             src = Path(td) / up.name
             src.write_bytes(up.getvalue())
-            targets = None
-            species_check = None
-            assembly_qc = None
+            targets = species_check = assembly_qc = None
+            problems: list[str] = []
 
-            # Detected from CONTENT. Trusting a mode toggle let a FASTA be parsed
-            # as a TSV, which yields zero determinants and a confident
-            # "likely to work" for every drug on a blaKPC-positive genome.
+            # Detected from CONTENT. Trusting a mode toggle once let a FASTA be
+            # parsed as a TSV, yielding zero determinants and a confident
+            # "likely to work" for a blaKPC-positive genome.
             kind = sniff_file_type(src)
             if kind == "protein_fasta":
-                st.error("This looks like a PROTEIN FASTA. The pipeline annotates "
-                         "nucleotide assemblies; upload the genome, not its proteome.")
+                st.error("This is a protein FASTA. Please upload the assembled "
+                         "genome (nucleotide sequence).")
                 st.stop()
             if kind == "unknown":
-                st.error("This file is neither a FASTA nor AMRFinderPlus output. "
-                         "A FASTA starts with '>'; an AMRFinderPlus TSV has an "
-                         "'Element symbol' (or 'Gene symbol') column.")
+                st.error("This file is neither a genome FASTA nor AMRFinderPlus "
+                         "output, so it cannot be analysed.")
                 st.stop()
 
             if kind == "fasta":
                 if not amrfinder_available():
-                    st.error("FASTA uploaded but AMRFinderPlus is not installed, so it "
-                             "cannot be converted into features. Run `make tools`.")
+                    st.error("Genome uploaded, but the annotation tool is not "
+                             "installed on this machine. Run `make tools`.")
                     st.stop()
                 assembly_qc = check_assembly(src)
                 if not assembly_qc["ok"]:
-                    st.error(f"Assembly QC failed: {assembly_qc['reason']}", icon="🚫")
+                    problems.append(assembly_qc["reason"])
                 for w in assembly_qc.get("warnings", []):
-                    st.warning(w, icon="⚠️")
-                st.success(
-                    f"Detected: assembled FASTA — {assembly_qc['total_bp'] / 1e6:.2f} Mb "
-                    f"in {assembly_qc['n_contigs']} contigs (N50 {assembly_qc['n50']:,} bp). "
-                    f"Running the full pipeline, target gate included.")
-                with st.spinner("Running AMRFinderPlus…"):
+                    problems.append(w)
+                with st.spinner("Reading the genome…"):
                     tsv = run_amrfinder(src, Path(td) / "amr.tsv", pred.cfg.species_taxgroup)
                 try:
                     targets = detect_targets(src)
                     species_check = verify_species(src)
                     if not species_check.get("ok", True):
-                        st.error(
-                            f"Species check failed: chromosomal targets match the "
-                            f"{pred.cfg.species} reference at only "
-                            f"{species_check['identity']:.1f}% identity "
-                            f"(expected >= 95%). This model covers {pred.cfg.species} "
-                            f"only. Every drug is reported as no-call.", icon="🚫")
+                        problems.append(
+                            f"This genome does not match {pred.cfg.species} "
+                            f"({species_check['identity']:.0f}% identity to the "
+                            f"reference genes, {95}% required).")
                 except Exception as e:
-                    st.warning(f"Target gate unavailable ({e}). Results are flagged accordingly.")
+                    problems.append(f"Species and target checks could not run ({e}).")
             else:
                 tsv = src
-                st.info("Detected: AMRFinderPlus TSV. The drug-target gate needs the "
-                        "assembly, so 'likely to work' results are **not** "
-                        "target-verified. Upload the FASTA for the full pipeline.", icon="ℹ️")
+                problems.append(
+                    "Annotation file uploaded instead of a genome, so the organism "
+                    "and the drug targets could not be verified. Upload the genome "
+                    "for the full set of checks.")
 
             report = pred.predict_from_tsv(tsv, sample_id=up.name, targets_found=targets,
                                            species_check=species_check,
                                            assembly_qc=assembly_qc)
-
-            # A genome with no AMR determinants at all is possible but rare -- far
-            # more often it means the input was misread. Say so instead of
-            # reporting five confident "no resistance found" calls.
             n_det = len(determinants(parse_amrfinder_tsv(tsv)))
-            if n_det == 0:
-                st.warning("**No AMR determinants were detected in this file.** Every "
-                           "prediction below is therefore made on an all-zero feature "
-                           "vector. Check that the file is what you expect before "
-                           "trusting any 'likely to work' result.", icon="⚠️")
-            else:
-                st.caption(f"{n_det} determinants detected.")
+            qc_line = ""
+            if assembly_qc:
+                qc_line = (f"{assembly_qc['total_bp'] / 1e6:.2f} Mb in "
+                           f"{assembly_qc['n_contigs']} contigs · ")
 
-        st.subheader("Antibiotic-response report")
-        for r in report.results:
-            icon, label = CALL_STYLE[r.call]
-            conf = f"{r.confidence:.0%}" if r.confidence is not None else "—"
+        # ---- sample header ----
+        st.markdown(f"#### {up.name}")
+        st.caption(f"{pred.cfg.species} · {qc_line}{n_det} resistance markers found")
+
+        for p in problems:
+            st.warning(p, icon="⚠️")
+
+        avoid = [r for r in report.results if r.call == CALL_FAIL]
+        maybe = [r for r in report.results if r.call == CALL_WORK]
+        unknown = [r for r in report.results if r.call == CALL_NONE]
+        def _conf(r):
+            return r.confidence if r.confidence is not None else 0.0
+
+        avoid.sort(key=_conf, reverse=True)
+        maybe.sort(key=_conf, reverse=True)
+
+        def drug_row(r, icon: str, show_prob: bool = True) -> None:
             with st.container(border=True):
-                c1, c2, c3 = st.columns([3, 2, 5])
-                c1.markdown(f"### {icon} {r.display}")
-                c1.markdown(f"**{label}**")
-                if r.reason == "recall_constrained_threshold":
-                    # p is a probability of resistance, not confidence in the call
-                    c2.metric("P(resistant)", conf)
-                    c2.caption("called FAIL above the recall-tuned threshold, "
-                               "which sits well below 50%")
+                left, right = st.columns([9, 1])
+                left.markdown(f"**{icon}&nbsp; {r.display}**")
+                if r.call == CALL_NONE:
+                    left.markdown(NO_ANSWER_REASON.get(
+                        r.reason, "The evidence is not strong enough to call."))
+                    # A refusal must not bury a determinant we did detect.
+                    found = detected_mechanisms(
+                        [s if isinstance(s, dict) else s.__dict__ for s in r.supporting])
+                    if found:
+                        left.warning(
+                            "A resistance mechanism was nonetheless detected: "
+                            + "; ".join(found)
+                            + ". The model is not confident enough to call the drug, "
+                              "but this finding stands on its own.", icon="⚠️")
                 else:
-                    c2.metric("Confidence", conf)
-                    c2.caption(f"reason: `{r.reason}`")
-                c3.markdown(f"**Evidence:** {EVIDENCE_LABEL.get(r.evidence_category, r.evidence_category)}")
-                if r.supporting:
-                    sup = pd.DataFrame(r.supporting)
-                    # UI columns unchanged for now; mechanistic_for_drug ships in the JSON
-                    sup = sup[[c for c in sup.columns if c != "mechanistic_for_drug"]]
-                    c3.dataframe(sup, hide_index=True, use_container_width=True)
-                    if not sup.curated_determinant.all():
-                        c3.caption("⚠️ Rows with `curated_determinant = False` are statistical "
-                                   "associations only — a weight is not proof of a biological cause.")
-                for n in r.notes:
-                    c3.caption(f"· {n}")
+                    left.markdown(headline_evidence(
+                        [s if isinstance(s, dict) else s.__dict__ for s in r.supporting],
+                        r.call))
+                    extra = supporting_sentences(
+                        [s if isinstance(s, dict) else s.__dict__ for s in r.supporting],
+                        r.call)
+                    if extra:
+                        with left.expander("Other findings for this drug"):
+                            for e in extra:
+                                st.markdown(f"- {e}")
+                if show_prob and r.confidence is not None:
+                    # small and grey on purpose: informative for a reviewer,
+                    # safely ignorable at the bedside
+                    right.caption(f"{r.confidence:.0%}")
+
+        if avoid:
+            st.markdown("### Avoid — resistance detected")
+            for r in avoid:
+                drug_row(r, "⛔")
+
+        if maybe:
+            st.markdown("### May work — no resistance markers found")
+            for r in maybe:
+                drug_row(r, "✅")
+
+        if unknown:
+            st.markdown("### No answer — insufficient evidence")
+            st.caption("The system declines these rather than guessing. Treat them as "
+                       "though this tool had not been run.")
+            for r in unknown:
+                drug_row(r, "❔", show_prob=False)
 
         if report.unknown_determinants:
-            st.warning(f"{len(report.unknown_determinants)} resistance determinants in this genome "
-                       f"were never seen in training: `{', '.join(report.unknown_determinants[:10])}`"
-                       " — predictions may be extrapolating.")
+            st.warning(
+                f"This genome carries {len(report.unknown_determinants)} resistance "
+                f"markers the system has not seen before "
+                f"(`{', '.join(report.unknown_determinants[:5])}`). Treat every "
+                f"result above with extra caution.", icon="⚠️")
 
-        st.download_button("Download report (JSON)",
-                           json.dumps(report.to_dict(), indent=2),
-                           file_name=f"{up.name}.genome-firewall.json")
+        rec = track_record(version)
+        if rec:
+            st.caption(rec)
 
-with tab_card:
+        with st.expander("What this tool does not do"):
+            st.markdown(
+                f"- It does not identify the organism. It assumes "
+                f"{pred.cfg.species} and refuses genomes that do not match.\n"
+                "- It does not process samples, sequence DNA, or assemble genomes. "
+                "It starts from a finished assembly.\n"
+                "- It does not separate mixed samples, choose a dose, or account for "
+                "the site of infection.\n"
+                "- It does not replace susceptibility testing. Every result above "
+                "needs laboratory confirmation."
+            )
+
+        with st.expander("Technical detail for this sample"):
+            rowsd = []
+            for r in report.results:
+                for s in r.supporting:
+                    d = s if isinstance(s, dict) else s.__dict__
+                    rowsd.append({"drug": r.drug_id, **d})
+            if rowsd:
+                st.dataframe(pd.DataFrame(rowsd), hide_index=True,
+                             use_container_width=True)
+                st.caption("`weight` is the logistic-regression coefficient: the gene "
+                           "multiplies the odds of resistance by e^weight. "
+                           "`mechanistic_for_drug = False` means the gene is a linked "
+                           "marker, not a mechanism for this drug.")
+            st.download_button("Download full report (JSON)",
+                               json.dumps(report.to_dict(), indent=2),
+                               file_name=f"{up.name}.genome-firewall.json")
+
+# ------------------------------------------------------------ reviewers ---
+with tab_tech:
     ev_path = DEFAULT_MODEL_DIR / version / "eval" / "report.json"
-    st.markdown("### Held-out performance (grouped split, unseen lineages)")
     if not ev_path.exists():
         st.info("No evaluation report yet — run `make eval`.")
     else:
         ev = read_json(ev_path)
 
-        # Point estimates come from one split. Measured spread across splits is
-        # +/- 0.047 AUROC, so a single number per drug overstates what is known.
         stab_path = DEFAULT_MODEL_DIR / version / "eval" / "stability.json"
         if stab_path.exists():
             stab = read_json(stab_path)
-            st.markdown(f"**Repeated over {stab['seeds']} independent grouped splits** "
-                        f"— mean ± standard deviation")
-            band = {}
-            for drug, mm in stab["per_drug"].items():
-                band[drug] = {
-                    m.replace("_", " "): f"{mm[m]['mean']:.3f} ± {mm[m]['std']:.3f}"
-                    for m in ("balanced_accuracy", "auroc", "pr_auc", "brier",
-                              "recall_resistant", "specificity", "no_call_rate")
-                    if m in mm
-                }
+            st.markdown(f"### Repeated over {stab['seeds']} independent grouped splits")
+            st.caption("Point estimates from a single split are unreliable here: the "
+                       "measured spread is ±0.02 AUROC. Every split re-draws the "
+                       "SNP-cluster grouping.")
+            band = {
+                drug: {m.replace("_", " "): f"{mm[m]['mean']:.3f} ± {mm[m]['std']:.3f}"
+                       for m in ("balanced_accuracy", "auroc", "pr_auc", "brier",
+                                 "recall_resistant", "specificity", "no_call_rate")
+                       if m in mm}
+                for drug, mm in stab["per_drug"].items()
+            }
             st.dataframe(pd.DataFrame(band).T, use_container_width=True)
             o = stab["overall"]
             c1, c2, c3 = st.columns(3)
-            c1.metric("Balanced accuracy",
-                      f"{o['balanced_accuracy']['mean']:.3f}",
+            c1.metric("Balanced accuracy", f"{o['balanced_accuracy']['mean']:.3f}",
                       f"± {o['balanced_accuracy']['std']:.3f}", delta_color="off")
             c2.metric("AUROC", f"{o['auroc']['mean']:.3f}",
                       f"± {o['auroc']['std']:.3f}", delta_color="off")
             c3.metric("Brier", f"{o['brier']['mean']:.3f}",
                       f"± {o['brier']['std']:.3f}", delta_color="off")
-            st.caption("Each split re-draws the SNP-cluster grouping, so the spread "
-                       "reflects which lineages happen to land in the test set. "
-                       "Numbers below are the shipped split only.")
 
-        st.markdown("**Shipped split** (the model actually being served)")
+        st.markdown("### Shipped split (the model being served)")
         rows = {k: {m: v for m, v in d.items()
                     if m not in ("reliability", "trivial_baseline")}
                 for k, d in ev["per_drug"].items()}
         st.dataframe(pd.DataFrame(rows).T, use_container_width=True)
 
-        # A recall-constrained model must be shown against "always predict
-        # resistant", which scores recall 1.0 by construction. Specificity is
-        # what separates them: the trivial model scores 0.0.
-        st.markdown("**vs. trivial baseline** (always predict resistant)")
+        st.markdown("### vs. trivial baseline (always predict resistant)")
         cmp_rows = {}
         for k, d in ev["per_drug"].items():
             t = d.get("trivial_baseline", {})
@@ -263,60 +337,49 @@ with tab_card:
             import plotly.graph_objects as go
 
             fig = go.Figure()
-            # the diagonal IS the point of the plot -- without it the curve is unreadable
             fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines",
                                      name="perfect calibration",
                                      line=dict(dash="dash", color="gray")))
             fig.add_trace(go.Scatter(
-                x=rel.mean_pred, y=rel.observed, mode="markers+lines",
-                name="observed", marker=dict(size=rel.n, sizemode="area",
-                                             sizeref=max(rel.n) / 400, sizemin=4),
-                hovertemplate="predicted %{x:.2f}<br>observed %{y:.2f}<br>n=%{marker.size}<extra></extra>",
+                x=rel.mean_pred, y=rel.observed, mode="markers+lines", name="observed",
+                marker=dict(size=rel.n, sizemode="area",
+                            sizeref=max(rel.n) / 400, sizemin=4),
+                hovertemplate="predicted %{x:.2f}<br>observed %{y:.2f}<extra></extra>",
             ))
-            band = d.get("abstain_band")
-            if band:
-                fig.add_vrect(x0=band[0], x1=band[1], fillcolor="orange", opacity=0.12,
+            bandv = d.get("abstain_band")
+            if bandv:
+                fig.add_vrect(x0=bandv[0], x1=bandv[1], fillcolor="orange", opacity=0.12,
                               line_width=0, annotation_text="no-call band",
                               annotation_position="top left")
-            fig.update_layout(
-                xaxis_title="predicted P(resistant)", yaxis_title="observed fraction resistant",
-                xaxis_range=[0, 1], yaxis_range=[0, 1], height=420,
-                margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h"),
-            )
+            fig.update_layout(xaxis_title="predicted P(resistant)",
+                              yaxis_title="observed fraction resistant",
+                              xaxis_range=[0, 1], yaxis_range=[0, 1], height=420,
+                              margin=dict(l=10, r=10, t=30, b=10),
+                              legend=dict(orientation="h"))
             st.plotly_chart(fig, use_container_width=True)
-
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Brier score", f"{d.get('brier', 0):.3f}",
-                      help="Mean squared error of the probabilities. Lower is better; "
-                           "0.25 is what you get by always guessing 0.5.")
-            c2.metric("No-call rate", f"{d.get('no_call_rate', 0):.0%}")
-            c3.metric("Bal. accuracy on calls made",
-                      f"{d.get('balanced_accuracy_on_called', 0):.3f}")
             st.caption("Marker area is the number of held-out samples in that bin — a "
-                       "point far off the diagonal with n=4 behind it is noise, not "
-                       "miscalibration. Perfect calibration follows the dashed line.")
+                       "point far off the diagonal with n=4 is noise, not "
+                       "miscalibration.")
 
-        # L1 sparsity: what the model actually looks at, per drug
         counts = pred.meta.get("training_counts", {}).get(drug, {})
         if counts.get("nonzero_features") is not None:
             st.markdown(
-                f"**Model for {drug}:** L1 logistic regression, "
-                f"`C={counts.get('C')}`, **{counts['nonzero_features']} non-zero "
-                f"coefficients** out of {len(pred.schema)} features. "
-                f"Selection rule: {counts.get('C_selection', {}).get('rule', 'n/a')}."
+                f"**Model for {drug}:** L1 logistic regression, `C={counts.get('C')}`, "
+                f"**{counts['nonzero_features']} non-zero coefficients** out of "
+                f"{len(pred.schema)} features. Selection rule: "
+                f"{counts.get('C_selection', {}).get('rule', 'n/a')}. "
+                f"Calibrated with Platt scaling, which keeps the model in the logistic "
+                f"family so exp(coefficient) remains an odds ratio."
             )
-            st.caption("L1 zeroes out most features on purpose — a handful of named "
-                       "determinants is an explanation a person can check, a 300-term "
-                       "dot product is not.")
 
-    st.markdown("### Scope & safety")
-    st.markdown(
-        f"- Covers **{pred.cfg.species}** only. Any other species is out of scope; "
-        "results would be meaningless.\n"
-        "- Predicts resistance that **already exists**. It never designs, modifies, "
-        "or suggests changes to an organism.\n"
-        "- Starts from an assembled, quality-checked genome — sample handling, "
-        "sequencing, species ID and assembly are out of scope.\n"
-        "- Returns **no-call** on weak, conflicting, or out-of-distribution evidence "
-        "rather than forcing a yes/no answer."
-    )
+        st.markdown("### Scope & safety")
+        st.markdown(
+            f"- Covers **{pred.cfg.species}** only; other species are refused by a "
+            "95% identity check against chromosomal target genes.\n"
+            "- Predicts resistance that **already exists**. It never designs, "
+            "modifies, or suggests changes to an organism.\n"
+            "- Starts from an assembled genome — sample handling, sequencing, species "
+            "identification and assembly are out of scope.\n"
+            "- Returns **no answer** on weak, conflicting or out-of-distribution "
+            "evidence rather than forcing a yes/no."
+        )
