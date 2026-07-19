@@ -22,7 +22,7 @@ from gfw.config import read_json  # noqa: E402
 from gfw.features import determinants, parse_amrfinder_tsv, vectorize  # noqa: E402
 
 DEMO = ROOT / "data" / "demo"
-VERSION = "v18"
+VERSION = "v19"
 
 
 def main() -> None:

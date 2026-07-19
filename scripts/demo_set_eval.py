@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from gfw.predict import CALL_FAIL, CALL_NONE, CALL_WORK, Predictor  # noqa: E402
 
-VERSION = "v18"
+VERSION = "v19"
 SET = ROOT / "data" / "demo" / "demo_set.json"
 
 

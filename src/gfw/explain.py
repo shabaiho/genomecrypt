@@ -1,14 +1,19 @@
-"""Plain-language descriptions of what a detected gene actually does.
+"""Plain-language descriptions of what a detected gene does.
 
-The report has to be readable by someone treating a patient, not by someone who
-trained the model. `genefam:blaKPC +1.664 toward_resistant curated=True` is
-precise and useless at the bedside; "carbapenemase — destroys meropenem and
-other carbapenems" is the same fact in a form a clinician can act on.
+Two rules, both deliberate.
 
-Only 54 features carry a non-zero weight in any of the five shipped models, so
-the coverage needed here is small and finite. Patterns are ordered most specific
-first; anything unmatched falls back to a neutral phrase rather than inventing
-biology.
+OBJECTIVE ONLY. No "some", "weak", "strong", "nearly every". Those words move the
+reader's judgement without telling them anything checkable. Where prevalence
+matters it is stated as a measured number from the reference set, not as an
+adjective. Where a gene's effect is partial, the drugs are named instead of
+being called "some".
+
+NO ADVICE. The report states what was found and what the model concluded. It does
+not tell a clinician what to prescribe.
+
+Only 54 features carry a non-zero weight in any shipped model, so coverage here is
+small and finite. Patterns are ordered most specific first; anything unmatched
+falls back to a neutral phrase rather than inventing biology.
 """
 from __future__ import annotations
 
@@ -16,67 +21,58 @@ import re
 
 # (regex on the symbol, description) -- checked in order, first match wins.
 GENE_DESCRIPTIONS: list[tuple[str, str]] = [
-    # --- carbapenemases: the ones that matter most clinically ---
-    (r"^blaKPC", "carbapenemase (KPC) — destroys carbapenems and most other beta-lactams"),
-    (r"^blaNDM", "metallo-carbapenemase (NDM) — destroys carbapenems; not blocked by "
-                 "the usual beta-lactamase inhibitors"),
-    (r"^blaVIM|^blaIMP", "metallo-carbapenemase — destroys carbapenems"),
-    (r"^blaOXA-48|^blaOXA-181|^blaOXA-232", "carbapenemase (OXA-48-like) — destroys carbapenems"),
-    (r"^blaOXA", "beta-lactamase (OXA family) — breaks down penicillins and some "
-                 "cephalosporins"),
+    # --- carbapenemases ---
+    (r"^blaKPC", "carbapenemase KPC — hydrolyses carbapenems, cephalosporins and penicillins"),
+    (r"^blaNDM", "metallo-carbapenemase NDM — hydrolyses carbapenems; not inhibited by "
+                 "clavulanate, tazobactam or avibactam"),
+    (r"^blaVIM|^blaIMP", "metallo-carbapenemase — hydrolyses carbapenems"),
+    (r"^blaOXA-48|^blaOXA-181|^blaOXA-232", "carbapenemase OXA-48-like — hydrolyses carbapenems"),
+    (r"^blaOXA", "beta-lactamase OXA family — hydrolyses penicillins"),
     # --- extended-spectrum and other beta-lactamases ---
-    (r"^blaCTX-M", "extended-spectrum beta-lactamase (CTX-M) — destroys cephalosporins "
-                   "such as ceftriaxone"),
-    (r"^blaSHV-12|^blaSHV-2|^blaSHV-5", "extended-spectrum beta-lactamase (SHV) — "
-                                        "destroys cephalosporins"),
-    (r"^blaSHV", "beta-lactamase (SHV) — present in almost every K. pneumoniae; on its "
-                 "own it confers little resistance"),
-    (r"^blaTEM", "beta-lactamase (TEM) — breaks down penicillins"),
-    (r"^blaCMY|^blaDHA|^blaACT|^blaFOX", "AmpC beta-lactamase — destroys cephalosporins "
-                                         "and resists clavulanate"),
-    (r"^blaLAP|^blaEC|^bla", "beta-lactamase — breaks down beta-lactam antibiotics"),
+    (r"^blaCTX-M", "extended-spectrum beta-lactamase CTX-M — hydrolyses ceftriaxone, "
+                   "cefotaxime and ceftazidime"),
+    (r"^blaSHV-12|^blaSHV-2|^blaSHV-5", "extended-spectrum beta-lactamase SHV — "
+                                        "hydrolyses ceftriaxone and ceftazidime"),
+    (r"^blaSHV", "beta-lactamase SHV — hydrolyses ampicillin"),
+    (r"^blaTEM", "beta-lactamase TEM — hydrolyses ampicillin"),
+    (r"^blaCMY|^blaDHA|^blaACT|^blaFOX", "AmpC beta-lactamase — hydrolyses ceftriaxone "
+                                         "and cefoxitin; not inhibited by clavulanate"),
+    (r"^blaLAP|^blaEC|^bla", "beta-lactamase — hydrolyses beta-lactam antibiotics"),
     # --- aminoglycoside modifying enzymes ---
-    (r"^rmt|^armA", "16S rRNA methyltransferase — blocks all aminoglycosides including "
-                    "gentamicin and amikacin"),
-    (r"^aac\(6'\)-Ib-cr", "modifies aminoglycosides and also reduces fluoroquinolone "
-                          "activity"),
-    (r"^aac\(3\)", "aminoglycoside acetyltransferase — inactivates gentamicin and "
-                   "tobramycin"),
-    (r"^aac\(6'\)", "aminoglycoside acetyltransferase — inactivates amikacin and "
-                    "tobramycin"),
-    (r"^ant\(|^aad", "aminoglycoside nucleotidyltransferase — inactivates streptomycin "
-                     "and related drugs"),
-    (r"^aph\(", "aminoglycoside phosphotransferase — inactivates kanamycin and "
-                "related drugs"),
+    (r"^rmt|^armA", "16S rRNA methyltransferase — blocks gentamicin, tobramycin and amikacin"),
+    (r"^aac\(6'\)-Ib-cr", "acetyltransferase — inactivates amikacin and tobramycin, "
+                          "and reduces ciprofloxacin activity"),
+    (r"^aac\(3\)", "acetyltransferase — inactivates gentamicin and tobramycin"),
+    (r"^aac\(6'\)", "acetyltransferase — inactivates amikacin and tobramycin"),
+    (r"^ant\(|^aad", "nucleotidyltransferase — inactivates streptomycin and spectinomycin"),
+    (r"^aph\(", "phosphotransferase — inactivates kanamycin and neomycin"),
     # --- quinolone ---
-    (r"^qnr", "plasmid-borne quinolone protection — reduces ciprofloxacin activity"),
-    (r"^oqx", "efflux pump — pumps quinolones and other drugs out of the cell"),
+    (r"^qnr", "Qnr protein — shields DNA gyrase from ciprofloxacin"),
+    (r"^oqx", "OqxAB efflux pump — exports ciprofloxacin and chloramphenicol"),
     # --- folate pathway ---
-    (r"^sul", "sulfonamide-resistant enzyme — bypasses the drug target of "
+    (r"^sul", "sulfonamide-resistant dihydropteroate synthase — replaces the target of "
               "sulfamethoxazole"),
-    (r"^dfr", "trimethoprim-resistant enzyme — bypasses the drug target of trimethoprim"),
+    (r"^dfr", "trimethoprim-resistant dihydrofolate reductase — replaces the target of "
+              "trimethoprim"),
     # --- other ---
-    (r"^fosA", "fosfomycin-modifying enzyme — present in nearly every K. pneumoniae"),
-    (r"^cat|^floR", "chloramphenicol resistance"),
-    (r"^arr", "rifampicin-modifying enzyme"),
-    (r"^tet\(", "tetracycline efflux or ribosomal protection"),
-    (r"^mcr", "colistin resistance"),
-    (r"^emr|^mdt|^acr", "efflux pump — present in nearly every K. pneumoniae; weak on "
-                        "its own"),
+    (r"^fosA", "fosfomycin-modifying enzyme — inactivates fosfomycin"),
+    (r"^cat|^floR", "chloramphenicol resistance enzyme — inactivates chloramphenicol"),
+    (r"^arr", "ADP-ribosyltransferase — inactivates rifampicin"),
+    (r"^tet\(", "tetracycline efflux pump — exports tetracycline"),
+    (r"^mcr", "phosphoethanolamine transferase — reduces colistin binding"),
+    (r"^emr|^mdt|^acr", "efflux pump — exports multiple drug classes"),
 ]
 
 MUTATION_DESCRIPTIONS: list[tuple[str, str]] = [
-    (r"^gyrA", "mutation in gyrA, the target of fluoroquinolones — reduces "
-               "ciprofloxacin binding"),
-    (r"^parC", "mutation in parC, the second fluoroquinolone target — adds to "
-               "ciprofloxacin resistance"),
-    (r"^ompK35", "loss or damage of porin OmpK35 — fewer channels for beta-lactams to "
-                 "enter the cell"),
-    (r"^ompK36", "loss or damage of porin OmpK36 — a main route to carbapenem "
-                 "resistance when a beta-lactamase is also present"),
-    (r"^pmrB|^phoQ|^mgrB", "mutation linked to colistin resistance"),
-    (r"^rpoB", "mutation in rpoB, the target of rifampicin"),
-    (r"^ramR|^acrR|^marR", "regulator mutation — can increase efflux pump activity"),
+    (r"^gyrA", "mutation in gyrA, the primary target of ciprofloxacin — reduces "
+               "drug binding"),
+    (r"^parC", "mutation in parC, the secondary target of ciprofloxacin — reduces "
+               "drug binding"),
+    (r"^ompK35", "porin OmpK35 altered or lost — reduces beta-lactam entry into the cell"),
+    (r"^ompK36", "porin OmpK36 altered or lost — reduces carbapenem entry into the cell"),
+    (r"^pmrB|^phoQ|^mgrB", "mutation in a colistin-resistance regulator"),
+    (r"^rpoB", "mutation in rpoB, the target of rifampicin — reduces drug binding"),
+    (r"^ramR|^acrR|^marR", "mutation in an efflux-pump regulator — increases pump expression"),
 ]
 
 

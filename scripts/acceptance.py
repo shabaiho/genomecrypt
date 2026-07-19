@@ -30,7 +30,7 @@ from gfw.features import (  # noqa: E402
 )
 from gfw.predict import CALL_NONE, Predictor  # noqa: E402
 
-VERSION = "v18"
+VERSION = "v19"
 DEMO = ROOT / "data" / "demo"
 results: list[tuple[str, str, str]] = []
 

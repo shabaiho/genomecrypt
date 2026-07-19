@@ -265,7 +265,15 @@ def main() -> None:
         splits[drug.id] = {"test_genome_ids": sub.genome_id.to_numpy()[te].tolist()}
         print(f"trained {drug.id}: {served[drug.id]}")
 
-    write_json(out / "feature_schema.json", {"features": schema, "n_features": len(schema)})
+    # Prevalence ships with the schema so the report can say "found in 79% of
+    # reference genomes" instead of a subjective "present in nearly every".
+    prevalence = {c: round(float(Xdf[c].mean()), 4) for c in schema}
+    write_json(out / "feature_schema.json", {
+        "features": schema,
+        "n_features": len(schema),
+        "prevalence": prevalence,
+        "prevalence_note": "fraction of the reference genomes carrying this feature",
+    })
     write_json(out / "splits.json", splits)
     write_json(out / "metadata.json", {
         "version": args.version,
