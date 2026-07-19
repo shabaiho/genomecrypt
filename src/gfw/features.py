@@ -138,8 +138,26 @@ TRUNCATING = re.compile(r"(fs|Ter|STOP|del|ins|dup)", re.IGNORECASE)
 ALLELE_SUFFIX = re.compile(r"(-\d+(\.\d+)?|\.\d+)$")
 
 
+# OXA is not one enzyme. blaOXA-48, -181, -204 and -232 are carbapenemases;
+# blaOXA-1, -2, -9 and -10 are narrow-spectrum beta-lactamases. Rolling them into
+# a single blaOXA family averaged two incompatible mechanisms into one
+# coefficient, and the meropenem model was using it. The distinction cannot be
+# read off the string, so it is stated.
+OXA_CARBAPENEMASES = {"48", "162", "163", "181", "199", "204", "232", "244", "245",
+                      "247", "370", "405", "436", "438", "484", "505", "517", "519",
+                      "535", "538", "546", "547", "566", "567", "793"}
+
+
 def gene_family(symbol: str) -> str:
-    """blaKPC-2 -> blaKPC ; blaCTX-M-15 -> blaCTX-M ; aac(6')-Ib-cr5 -> aac(6')-Ib-cr"""
+    """blaKPC-2 -> blaKPC ; blaCTX-M-15 -> blaCTX-M ; blaOXA-48 -> blaOXA-48-like
+
+    Families are derived from the symbol, which works because an allele number
+    usually denotes a variant of one enzyme. Where that is not true the exception
+    is written down rather than inferred.
+    """
+    if symbol.startswith("blaOXA-"):
+        allele = symbol.split("-", 1)[1].split(".")[0]
+        return "blaOXA-48-like" if allele in OXA_CARBAPENEMASES else "blaOXA"
     return ALLELE_SUFFIX.sub("", symbol)
 
 

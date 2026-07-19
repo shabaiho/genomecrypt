@@ -22,7 +22,10 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from gfw.predict import CALL_FAIL, CALL_NONE, CALL_WORK, Predictor  # noqa: E402
 
-VERSION = "v19"
+# The served bundle, not a pinned version. models/current is a symlink that
+# retraining re-points; hardcoding "v19" here meant the tests would keep
+# validating an older bundle than the app actually loads.
+VERSION = "current"
 SET = ROOT / "data" / "demo" / "demo_set.json"
 
 

@@ -53,7 +53,8 @@ def score(y: np.ndarray, p: np.ndarray, lo: float, hi: float) -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", default="v18")
+    ap.add_argument("--version", default="current",
+                    help="bundle to evaluate; defaults to the served one")
     ap.add_argument("--seeds", type=int, default=8)
     ap.add_argument("--matrix", type=Path, default=Path("data/processed/features.parquet"))
     ap.add_argument("--labels", type=Path, default=Path("data/processed/labels.csv"))

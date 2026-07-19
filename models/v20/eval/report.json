@@ -9,7 +9,7 @@
     "ciprofloxacin": {},
     "gentamicin": {
       "4": {
-        "balanced_accuracy": 0.446,
+        "balanced_accuracy": 0.518,
         "n": 19
       },
       "24": {
@@ -37,23 +37,23 @@
   "per_drug": {
     "ceftriaxone": {
       "abstain_band": [
-        0.44,
-        0.56
+        0.48,
+        0.52
       ],
-      "auroc": 0.9,
-      "balanced_accuracy": 0.746,
-      "balanced_accuracy_on_called": 0.931,
-      "brier": 0.1219,
-      "f1": 0.808,
-      "missed_resistant": 16,
+      "auroc": 0.908,
+      "balanced_accuracy": 0.751,
+      "balanced_accuracy_on_called": 0.935,
+      "brier": 0.1199,
+      "f1": 0.812,
+      "missed_resistant": 14,
       "mode": "calibrated_abstain",
       "n": 385,
-      "no_call_rate": 0.294,
+      "no_call_rate": 0.291,
       "operating_threshold": 0.5,
-      "pr_auc": 0.905,
-      "precision": 0.717,
+      "pr_auc": 0.916,
+      "precision": 0.72,
       "prevalence_resistant": 0.543,
-      "recall_resistant": 0.923,
+      "recall_resistant": 0.933,
       "recall_susceptible": 0.568,
       "reliability": [
         {
@@ -61,80 +61,80 @@
             0.0,
             0.1
           ],
-          "mean_pred": 0.085,
-          "n": 62,
-          "observed": 0.097
+          "mean_pred": 0.078,
+          "n": 66,
+          "observed": 0.076
         },
         {
           "bin": [
             0.1,
             0.2
           ],
-          "mean_pred": 0.149,
-          "n": 30,
-          "observed": 0.133
+          "mean_pred": 0.154,
+          "n": 29,
+          "observed": 0.138
         },
         {
           "bin": [
             0.2,
             0.3
           ],
-          "mean_pred": 0.222,
-          "n": 16,
-          "observed": 0.188
+          "mean_pred": 0.246,
+          "n": 14,
+          "observed": 0.357
         },
         {
           "bin": [
             0.3,
             0.4
           ],
-          "mean_pred": 0.347,
-          "n": 6,
-          "observed": 0.333
+          "mean_pred": 0.316,
+          "n": 2,
+          "observed": 0.0
         },
         {
           "bin": [
             0.4,
             0.5
           ],
-          "mean_pred": 0.449,
-          "n": 2,
-          "observed": 0.5
+          "mean_pred": 0.46,
+          "n": 3,
+          "observed": 0.0
         },
         {
           "bin": [
             0.5,
             0.6
           ],
-          "mean_pred": 0.514,
+          "mean_pred": 0.517,
           "n": 114,
-          "observed": 0.377
+          "observed": 0.368
         },
         {
           "bin": [
             0.6,
             0.7
           ],
-          "mean_pred": 0.628,
+          "mean_pred": 0.637,
           "n": 5,
-          "observed": 0.8
+          "observed": 1.0
         },
         {
           "bin": [
             0.7,
             0.8
           ],
-          "mean_pred": 0.756,
-          "n": 10,
-          "observed": 0.8
+          "mean_pred": 0.769,
+          "n": 13,
+          "observed": 0.846
         },
         {
           "bin": [
             0.8,
             0.9
           ],
-          "mean_pred": 0.879,
-          "n": 21,
+          "mean_pred": 0.88,
+          "n": 7,
           "observed": 1.0
         },
         {
@@ -142,9 +142,9 @@
             0.9,
             1.0
           ],
-          "mean_pred": 0.97,
-          "n": 119,
-          "observed": 0.983
+          "mean_pred": 0.969,
+          "n": 132,
+          "observed": 0.985
         }
       ],
       "specificity": 0.568,
@@ -159,23 +159,23 @@
     },
     "ciprofloxacin": {
       "abstain_band": [
-        0.45,
-        0.55
+        0.46,
+        0.54
       ],
-      "auroc": 0.888,
-      "balanced_accuracy": 0.798,
-      "balanced_accuracy_on_called": 0.879,
-      "brier": 0.1256,
-      "f1": 0.807,
-      "missed_resistant": 77,
+      "auroc": 0.891,
+      "balanced_accuracy": 0.8,
+      "balanced_accuracy_on_called": 0.876,
+      "brier": 0.1257,
+      "f1": 0.809,
+      "missed_resistant": 76,
       "mode": "calibrated_abstain",
       "n": 443,
-      "no_call_rate": 0.321,
+      "no_call_rate": 0.316,
       "operating_threshold": 0.5,
-      "pr_auc": 0.925,
+      "pr_auc": 0.927,
       "precision": 0.907,
       "prevalence_resistant": 0.637,
-      "recall_resistant": 0.727,
+      "recall_resistant": 0.73,
       "recall_susceptible": 0.87,
       "reliability": [
         {
@@ -183,7 +183,7 @@
             0.1,
             0.2
           ],
-          "mean_pred": 0.15,
+          "mean_pred": 0.148,
           "n": 51,
           "observed": 0.02
         },
@@ -201,17 +201,17 @@
             0.3,
             0.4
           ],
-          "mean_pred": 0.326,
-          "n": 8,
-          "observed": 0.5
+          "mean_pred": 0.319,
+          "n": 9,
+          "observed": 0.444
         },
         {
           "bin": [
             0.4,
             0.5
           ],
-          "mean_pred": 0.458,
-          "n": 142,
+          "mean_pred": 0.463,
+          "n": 140,
           "observed": 0.493
         },
         {
@@ -219,26 +219,26 @@
             0.5,
             0.6
           ],
-          "mean_pred": 0.555,
+          "mean_pred": 0.538,
           "n": 6,
-          "observed": 0.0
+          "observed": 0.333
         },
         {
           "bin": [
             0.6,
             0.7
           ],
-          "mean_pred": 0.639,
-          "n": 8,
-          "observed": 0.625
+          "mean_pred": 0.649,
+          "n": 10,
+          "observed": 0.5
         },
         {
           "bin": [
             0.7,
             0.8
           ],
-          "mean_pred": 0.732,
-          "n": 5,
+          "mean_pred": 0.761,
+          "n": 4,
           "observed": 1.0
         },
         {
@@ -246,7 +246,7 @@
             0.8,
             0.9
           ],
-          "mean_pred": 0.844,
+          "mean_pred": 0.856,
           "n": 25,
           "observed": 0.68
         },
@@ -255,7 +255,7 @@
             0.9,
             1.0
           ],
-          "mean_pred": 0.994,
+          "mean_pred": 0.995,
           "n": 182,
           "observed": 0.978
         }
@@ -275,20 +275,20 @@
         0.47,
         0.53
       ],
-      "auroc": 0.879,
-      "balanced_accuracy": 0.763,
-      "balanced_accuracy_on_called": 0.764,
-      "brier": 0.1371,
-      "f1": 0.698,
-      "missed_resistant": 67,
+      "auroc": 0.882,
+      "balanced_accuracy": 0.772,
+      "balanced_accuracy_on_called": 0.767,
+      "brier": 0.1358,
+      "f1": 0.714,
+      "missed_resistant": 64,
       "mode": "calibrated_abstain",
       "n": 366,
-      "no_call_rate": 0.016,
+      "no_call_rate": 0.038,
       "operating_threshold": 0.5,
-      "pr_auc": 0.835,
-      "precision": 0.907,
+      "pr_auc": 0.838,
+      "precision": 0.91,
       "prevalence_resistant": 0.423,
-      "recall_resistant": 0.568,
+      "recall_resistant": 0.587,
       "recall_susceptible": 0.957,
       "reliability": [
         {
@@ -297,53 +297,53 @@
             0.1
           ],
           "mean_pred": 0.073,
-          "n": 54,
-          "observed": 0.037
+          "n": 56,
+          "observed": 0.018
         },
         {
           "bin": [
             0.1,
             0.2
           ],
-          "mean_pred": 0.141,
-          "n": 41,
-          "observed": 0.122
+          "mean_pred": 0.149,
+          "n": 39,
+          "observed": 0.128
         },
         {
           "bin": [
             0.2,
             0.3
           ],
-          "mean_pred": 0.246,
-          "n": 61,
-          "observed": 0.131
+          "mean_pred": 0.247,
+          "n": 57,
+          "observed": 0.158
         },
         {
           "bin": [
             0.3,
             0.4
           ],
-          "mean_pred": 0.356,
-          "n": 9,
-          "observed": 0.111
+          "mean_pred": 0.35,
+          "n": 17,
+          "observed": 0.294
         },
         {
           "bin": [
             0.4,
             0.5
           ],
-          "mean_pred": 0.457,
-          "n": 104,
-          "observed": 0.49
+          "mean_pred": 0.463,
+          "n": 97,
+          "observed": 0.454
         },
         {
           "bin": [
             0.5,
             0.6
           ],
-          "mean_pred": 0.551,
-          "n": 17,
-          "observed": 0.706
+          "mean_pred": 0.517,
+          "n": 15,
+          "observed": 0.667
         },
         {
           "bin": [
@@ -351,16 +351,16 @@
             0.7
           ],
           "mean_pred": 0.653,
-          "n": 5,
-          "observed": 0.8
+          "n": 10,
+          "observed": 0.9
         },
         {
           "bin": [
             0.7,
             0.8
           ],
-          "mean_pred": 0.768,
-          "n": 10,
+          "mean_pred": 0.745,
+          "n": 8,
           "observed": 1.0
         },
         {
@@ -368,7 +368,7 @@
             0.8,
             0.9
           ],
-          "mean_pred": 0.88,
+          "mean_pred": 0.87,
           "n": 14,
           "observed": 1.0
         },
@@ -377,9 +377,9 @@
             0.9,
             1.0
           ],
-          "mean_pred": 0.956,
-          "n": 51,
-          "observed": 0.941
+          "mean_pred": 0.958,
+          "n": 53,
+          "observed": 0.943
         }
       ],
       "specificity": 0.957,
@@ -397,56 +397,56 @@
         0.33,
         0.67
       ],
-      "auroc": 0.878,
-      "balanced_accuracy": 0.754,
-      "balanced_accuracy_on_called": 0.767,
-      "brier": 0.1566,
-      "f1": 0.729,
+      "auroc": 0.88,
+      "balanced_accuracy": 0.77,
+      "balanced_accuracy_on_called": 0.773,
+      "brier": 0.1531,
+      "f1": 0.742,
       "missed_resistant": 13,
       "mode": "calibrated_abstain",
       "n": 380,
-      "no_call_rate": 0.076,
+      "no_call_rate": 0.074,
       "operating_threshold": 0.5,
-      "pr_auc": 0.823,
-      "precision": 0.605,
+      "pr_auc": 0.824,
+      "precision": 0.624,
       "prevalence_resistant": 0.405,
       "recall_resistant": 0.916,
-      "recall_susceptible": 0.593,
+      "recall_susceptible": 0.624,
       "reliability": [
         {
           "bin": [
             0.0,
             0.1
           ],
-          "mean_pred": 0.046,
-          "n": 101,
-          "observed": 0.03
+          "mean_pred": 0.045,
+          "n": 103,
+          "observed": 0.029
         },
         {
           "bin": [
             0.1,
             0.2
           ],
-          "mean_pred": 0.152,
-          "n": 23,
-          "observed": 0.174
+          "mean_pred": 0.139,
+          "n": 16,
+          "observed": 0.062
         },
         {
           "bin": [
             0.2,
             0.3
           ],
-          "mean_pred": 0.253,
-          "n": 6,
-          "observed": 0.167
+          "mean_pred": 0.23,
+          "n": 11,
+          "observed": 0.273
         },
         {
           "bin": [
             0.3,
             0.4
           ],
-          "mean_pred": 0.375,
-          "n": 16,
+          "mean_pred": 0.381,
+          "n": 20,
           "observed": 0.25
         },
         {
@@ -454,18 +454,18 @@
             0.4,
             0.5
           ],
-          "mean_pred": 0.483,
-          "n": 1,
-          "observed": 1.0
+          "mean_pred": 0.436,
+          "n": 4,
+          "observed": 0.25
         },
         {
           "bin": [
             0.5,
             0.6
           ],
-          "mean_pred": 0.534,
-          "n": 10,
-          "observed": 0.3
+          "mean_pred": 0.58,
+          "n": 2,
+          "observed": 1.0
         },
         {
           "bin": [
@@ -473,17 +473,17 @@
             0.7
           ],
           "mean_pred": 0.674,
-          "n": 127,
-          "observed": 0.394
+          "n": 129,
+          "observed": 0.395
         },
         {
           "bin": [
             0.7,
             0.8
           ],
-          "mean_pred": 0.738,
-          "n": 8,
-          "observed": 0.5
+          "mean_pred": 0.754,
+          "n": 7,
+          "observed": 0.857
         },
         {
           "bin": [
@@ -491,20 +491,20 @@
             0.9
           ],
           "mean_pred": 0.853,
-          "n": 15,
-          "observed": 0.8
+          "n": 12,
+          "observed": 0.667
         },
         {
           "bin": [
             0.9,
             1.0
           ],
-          "mean_pred": 0.98,
-          "n": 73,
-          "observed": 0.986
+          "mean_pred": 0.977,
+          "n": 76,
+          "observed": 0.974
         }
       ],
-      "specificity": 0.593,
+      "specificity": 0.624,
       "trivial_baseline": {
         "balanced_accuracy": 0.5,
         "f1": 0.577,
@@ -522,7 +522,7 @@
       "auroc": 0.891,
       "balanced_accuracy": 0.816,
       "balanced_accuracy_on_called": 0.816,
-      "brier": 0.1325,
+      "brier": 0.1324,
       "f1": 0.819,
       "missed_resistant": 43,
       "mode": "calibrated_abstain",
@@ -558,7 +558,7 @@
             0.6,
             0.7
           ],
-          "mean_pred": 0.647,
+          "mean_pred": 0.648,
           "n": 1,
           "observed": 1.0
         },
@@ -576,7 +576,7 @@
             0.8,
             0.9
           ],
-          "mean_pred": 0.838,
+          "mean_pred": 0.837,
           "n": 16,
           "observed": 0.688
         },
@@ -601,5 +601,5 @@
       }
     }
   },
-  "version": "v19"
+  "version": "v20"
 }

@@ -22,7 +22,10 @@ from gfw.config import read_json  # noqa: E402
 from gfw.features import determinants, parse_amrfinder_tsv, vectorize  # noqa: E402
 
 DEMO = ROOT / "data" / "demo"
-VERSION = "v19"
+# The served bundle, not a pinned version. models/current is a symlink that
+# retraining re-points; hardcoding "v19" here meant the tests would keep
+# validating an older bundle than the app actually loads.
+VERSION = "current"
 
 
 def main() -> None:

@@ -21,13 +21,13 @@
     "meropenem",
     "trimethoprim_sulfamethoxazole"
   ],
-  "git_sha": "a6e0840",
+  "git_sha": "83e5622",
   "model": "LogisticRegression(l1, balanced, C by AUROC) + Platt calibration",
   "seed": 0,
   "species": "Klebsiella pneumoniae",
   "training_counts": {
     "ceftriaxone": {
-      "C": 0.1,
+      "C": 0.3,
       "C_grid": [
         {
           "C": 0.01,
@@ -41,40 +41,40 @@
         },
         {
           "C": 0.1,
-          "calib_auroc": 0.8954,
-          "nonzero": 12
+          "calib_auroc": 0.8958,
+          "nonzero": 11
         },
         {
           "C": 0.3,
-          "calib_auroc": 0.8956,
-          "nonzero": 23
+          "calib_auroc": 0.8995,
+          "nonzero": 22
         },
         {
           "C": 1.0,
-          "calib_auroc": 0.9049,
-          "nonzero": 50
+          "calib_auroc": 0.9082,
+          "nonzero": 53
         },
         {
           "C": 3.0,
-          "calib_auroc": 0.898,
-          "nonzero": 78
+          "calib_auroc": 0.8984,
+          "nonzero": 82
         }
       ],
       "C_selection": {
-        "best_calib_auroc": 0.9049,
+        "best_calib_auroc": 0.9082,
         "rule": "half_standard_error",
-        "selected_C": 0.1,
-        "selected_calib_auroc": 0.8954,
-        "standard_error": 0.0102
+        "selected_C": 0.3,
+        "selected_calib_auroc": 0.8995,
+        "standard_error": 0.0101
       },
       "abstain_band": [
-        0.44,
-        0.56
+        0.48,
+        0.52
       ],
-      "band_accuracy_on_called": 0.9048,
-      "band_no_call_rate": 0.28,
+      "band_accuracy_on_called": 0.9147,
+      "band_no_call_rate": 0.2629,
       "calib_recall": 0.9596,
-      "calib_specificity": 0.5789,
+      "calib_specificity": 0.5,
       "degenerate": false,
       "n_calib": 206,
       "n_resistant": 1047,
@@ -82,8 +82,8 @@
       "n_thresh": 175,
       "n_total": 1908,
       "n_train": 1142,
-      "nonzero_features": 12,
-      "threshold": 0.1737
+      "nonzero_features": 22,
+      "threshold": 0.1967
     },
     "ciprofloxacin": {
       "C": 0.1,
@@ -95,40 +95,40 @@
         },
         {
           "C": 0.03,
-          "calib_auroc": 0.8487,
+          "calib_auroc": 0.8547,
           "nonzero": 2
         },
         {
           "C": 0.1,
-          "calib_auroc": 0.9283,
-          "nonzero": 14
+          "calib_auroc": 0.9286,
+          "nonzero": 13
         },
         {
           "C": 0.3,
-          "calib_auroc": 0.9279,
+          "calib_auroc": 0.9277,
           "nonzero": 26
         },
         {
           "C": 1.0,
-          "calib_auroc": 0.9274,
-          "nonzero": 61
+          "calib_auroc": 0.9273,
+          "nonzero": 60
         },
         {
           "C": 3.0,
           "calib_auroc": 0.9018,
-          "nonzero": 102
+          "nonzero": 101
         }
       ],
       "C_selection": {
-        "best_calib_auroc": 0.9283,
+        "best_calib_auroc": 0.9286,
         "rule": "half_standard_error",
         "selected_C": 0.1,
-        "selected_calib_auroc": 0.9283,
+        "selected_calib_auroc": 0.9286,
         "standard_error": 0.0099
       },
       "abstain_band": [
-        0.45,
-        0.55
+        0.46,
+        0.54
       ],
       "band_accuracy_on_called": 0.9,
       "band_no_call_rate": 0.2814,
@@ -141,58 +141,58 @@
       "n_thresh": 167,
       "n_total": 1915,
       "n_train": 1136,
-      "nonzero_features": 14,
-      "threshold": 0.4586
+      "nonzero_features": 13,
+      "threshold": 0.4626
     },
     "gentamicin": {
       "C": 0.3,
       "C_grid": [
         {
           "C": 0.01,
-          "calib_auroc": 0.6697,
+          "calib_auroc": 0.6419,
           "nonzero": 1
         },
         {
           "C": 0.03,
           "calib_auroc": 0.7934,
-          "nonzero": 4
+          "nonzero": 6
         },
         {
           "C": 0.1,
-          "calib_auroc": 0.8594,
-          "nonzero": 15
+          "calib_auroc": 0.869,
+          "nonzero": 18
         },
         {
           "C": 0.3,
-          "calib_auroc": 0.8835,
-          "nonzero": 30
+          "calib_auroc": 0.887,
+          "nonzero": 31
         },
         {
           "C": 1.0,
-          "calib_auroc": 0.8846,
-          "nonzero": 54
+          "calib_auroc": 0.8812,
+          "nonzero": 56
         },
         {
           "C": 3.0,
-          "calib_auroc": 0.8692,
-          "nonzero": 80
+          "calib_auroc": 0.8656,
+          "nonzero": 79
         }
       ],
       "C_selection": {
-        "best_calib_auroc": 0.8846,
+        "best_calib_auroc": 0.887,
         "rule": "half_standard_error",
         "selected_C": 0.3,
-        "selected_calib_auroc": 0.8835,
-        "standard_error": 0.0118
+        "selected_calib_auroc": 0.887,
+        "standard_error": 0.0117
       },
       "abstain_band": [
         0.47,
         0.53
       ],
-      "band_accuracy_on_called": 0.8346,
-      "band_no_call_rate": 0.0075,
+      "band_accuracy_on_called": 0.8485,
+      "band_no_call_rate": 0.0149,
       "calib_recall": 0.9643,
-      "calib_specificity": 0.5897,
+      "calib_specificity": 0.6154,
       "degenerate": false,
       "n_calib": 184,
       "n_resistant": 796,
@@ -200,8 +200,8 @@
       "n_thresh": 134,
       "n_total": 1790,
       "n_train": 1106,
-      "nonzero_features": 30,
-      "threshold": 0.2638
+      "nonzero_features": 31,
+      "threshold": 0.3165
     },
     "meropenem": {
       "C": 0.3,
@@ -218,40 +218,40 @@
         },
         {
           "C": 0.1,
-          "calib_auroc": 0.9391,
+          "calib_auroc": 0.9379,
           "nonzero": 12
         },
         {
           "C": 0.3,
-          "calib_auroc": 0.9542,
-          "nonzero": 24
+          "calib_auroc": 0.956,
+          "nonzero": 21
         },
         {
           "C": 1.0,
-          "calib_auroc": 0.9378,
-          "nonzero": 50
+          "calib_auroc": 0.9334,
+          "nonzero": 49
         },
         {
           "C": 3.0,
-          "calib_auroc": 0.9186,
-          "nonzero": 85
+          "calib_auroc": 0.9182,
+          "nonzero": 79
         }
       ],
       "C_selection": {
-        "best_calib_auroc": 0.9542,
+        "best_calib_auroc": 0.956,
         "rule": "half_standard_error",
         "selected_C": 0.3,
-        "selected_calib_auroc": 0.9542,
-        "standard_error": 0.008
+        "selected_calib_auroc": 0.956,
+        "standard_error": 0.0079
       },
       "abstain_band": [
         0.33,
         0.67
       ],
-      "band_accuracy_on_called": 0.864,
-      "band_no_call_rate": 0.1197,
+      "band_accuracy_on_called": 0.8661,
+      "band_no_call_rate": 0.1056,
       "calib_recall": 0.963,
-      "calib_specificity": 0.4432,
+      "calib_specificity": 0.5909,
       "degenerate": false,
       "n_calib": 170,
       "n_resistant": 860,
@@ -259,8 +259,8 @@
       "n_thresh": 142,
       "n_total": 1869,
       "n_train": 1177,
-      "nonzero_features": 24,
-      "threshold": 0.065
+      "nonzero_features": 21,
+      "threshold": 0.077
     },
     "trimethoprim_sulfamethoxazole": {
       "C": 0.1,
@@ -282,18 +282,18 @@
         },
         {
           "C": 0.3,
-          "calib_auroc": 0.9122,
+          "calib_auroc": 0.9039,
           "nonzero": 23
         },
         {
           "C": 1.0,
           "calib_auroc": 0.8872,
-          "nonzero": 58
+          "nonzero": 60
         },
         {
           "C": 3.0,
-          "calib_auroc": 0.9036,
-          "nonzero": 96
+          "calib_auroc": 0.912,
+          "nonzero": 99
         }
       ],
       "C_selection": {
@@ -322,5 +322,5 @@
       "threshold": 0.3594
     }
   },
-  "version": "v19"
+  "version": "v20"
 }

@@ -37,7 +37,28 @@ POINT_SUFFIXES = {"POINT"}
 DROP_SUFFIXES = {"MISTRANSLATION", "PARTIAL", "PARTIAL_CONTIG_END", "INTERNAL_STOP", "HMM"}
 
 
+# Pinned so that a rerun reproduces the published numbers. NCBI rotates snapshots
+# and publishes them incrementally: PDG000000012.2471 appeared with only a
+# Metadata/ directory, no AMR/ and no Clusters/, and blindly taking "latest"
+# turned that into a 404 that killed the run. Pass --snapshot latest to move.
+PINNED_SNAPSHOT = {"Klebsiella": "PDG000000012.2470"}
+
+
+def snapshot_is_complete(organism: str, snapshot: str) -> bool:
+    """A snapshot is usable only once both directories we read from exist."""
+    for sub in ("AMR", "Clusters"):
+        try:
+            with urllib.request.urlopen(
+                    f"{FTP}/{organism}/{snapshot}/{sub}/", timeout=60) as r:
+                if b"tsv" not in r.read():
+                    return False
+        except Exception:
+            return False
+    return True
+
+
 def latest_snapshot(organism: str) -> str:
+    """Newest snapshot that is actually finished publishing."""
     with urllib.request.urlopen(f"{FTP}/{organism}/", timeout=120) as r:
         html = r.read().decode("utf-8", "replace")
     import re
@@ -46,7 +67,34 @@ def latest_snapshot(organism: str) -> str:
                   key=lambda s: [int(x) for x in s.replace("PDG", "").split(".")])
     if not tags:
         raise RuntimeError(f"no PDG snapshot found for {organism}")
-    return tags[-1]
+    for tag in reversed(tags):
+        if snapshot_is_complete(organism, tag):
+            return tag
+    raise RuntimeError(f"no complete snapshot for {organism}")
+
+
+def cached_snapshots(raw: Path) -> list[str]:
+    return sorted({p.name.split(".amr")[0] for p in raw.glob("*.amr.metadata.tsv")})
+
+
+def resolve_snapshot(organism: str, requested: str, raw: Path) -> str:
+    """Pinned by default, 'latest' on request, cached as a fallback.
+
+    A rerun must not silently pull a different dataset than the one the reported
+    numbers came from.
+    """
+    cached = cached_snapshots(raw)
+    if requested == "latest":
+        return latest_snapshot(organism)
+    if requested != "pinned":
+        return requested
+    pin = PINNED_SNAPSHOT.get(organism)
+    if pin and (pin in cached or snapshot_is_complete(organism, pin)):
+        return pin
+    if cached:
+        print(f"pinned snapshot unavailable; using cached {cached[-1]}")
+        return cached[-1]
+    return latest_snapshot(organism)
 
 
 def download(organism: str, snapshot: str, raw: Path) -> tuple[Path, Path]:
@@ -102,10 +150,12 @@ def parse_ast(s: str, label_map: dict[str, int]) -> dict[str, int]:
     return out
 
 
-def build(organism: str = "Klebsiella", min_prevalence: int = 3) -> dict:
+def build(organism: str = "Klebsiella", min_prevalence: int = 3,
+          snapshot_spec: str = "pinned") -> dict:
     cfg = Config.load()
     raw = REPO_ROOT / "data" / "raw" / "ncbi"
-    snapshot = latest_snapshot(organism)
+    raw.mkdir(parents=True, exist_ok=True)
+    snapshot = resolve_snapshot(organism, snapshot_spec, raw)
     print(f"snapshot: {snapshot}")
     amr_path, clu_path = download(organism, snapshot, raw)
 
@@ -177,9 +227,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--organism", default="Klebsiella")
     ap.add_argument("--min-prevalence", type=int, default=3)
+    ap.add_argument("--snapshot", default="pinned",
+                    help="'pinned' (reproduces the published numbers), 'latest', "
+                         "or an explicit PDG accession")
     args = ap.parse_args()
 
-    out = build(args.organism, args.min_prevalence)
+    out = build(args.organism, args.min_prevalence, args.snapshot)
     proc = REPO_ROOT / "data" / "processed"
     proc.mkdir(parents=True, exist_ok=True)
 

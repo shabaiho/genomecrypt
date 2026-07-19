@@ -30,7 +30,10 @@ from gfw.features import (  # noqa: E402
 )
 from gfw.predict import CALL_NONE, Predictor  # noqa: E402
 
-VERSION = "v19"
+# The served bundle, not a pinned version. models/current is a symlink that
+# retraining re-points; hardcoding "v19" here meant the tests would keep
+# validating an older bundle than the app actually loads.
+VERSION = "current"
 DEMO = ROOT / "data" / "demo"
 results: list[tuple[str, str, str]] = []
 

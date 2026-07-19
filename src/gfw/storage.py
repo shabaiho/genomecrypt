@@ -140,10 +140,25 @@ def load_sample(digest: str) -> tuple[bytes, str, str] | None:
     return src.read_bytes(), meta.get("original_name", src.name), meta.get("file_type", "fasta")
 
 
+def _journal() -> list[dict]:
+    """Every logged run, in order. history() deduplicates by sample; this does not."""
+    idx = STORE / "index.jsonl"
+    if not idx.exists():
+        return []
+    return [json.loads(x) for x in idx.read_text().splitlines() if x.strip()]
+
+
 def stats() -> dict:
-    rows = history(limit=10 ** 9)
+    """Counts of what actually happened.
+
+    `submissions` used to be built on history(), which collapses repeat runs of
+    the same genome into one row -- so a journal of 7 runs reported 1 submission.
+    Read the journal directly and let each name mean what it says.
+    """
+    rows = _journal()
     return {
         "submissions": len(rows),
         "unique_samples": len({r["digest"] for r in rows}),
+        "browsers": len({r.get("browser_id", "anonymous") for r in rows}),
         "model_versions": sorted({r["model_version"] for r in rows}),
     }

@@ -32,7 +32,10 @@ from gfw.predict import Predictor  # noqa: E402
 
 DEMO = ROOT / "data" / "demo"
 FASTA = DEMO / "GCA_000417485.1.fna"
-VERSION = "v19"
+# The served bundle, not a pinned version. models/current is a symlink that
+# retraining re-points; hardcoding "v19" here meant the tests would keep
+# validating an older bundle than the app actually loads.
+VERSION = "current"
 ORGANISM = "Klebsiella_pneumoniae"
 
 

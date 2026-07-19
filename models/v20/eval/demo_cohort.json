@@ -1,10 +1,10 @@
 {
   "n_genomes": 15,
   "n_labels": 74,
-  "n_called": 56,
-  "n_correct": 52,
-  "accuracy": 0.9286,
-  "no_call_rate": 0.2432,
+  "n_called": 61,
+  "n_correct": 53,
+  "accuracy": 0.8689,
+  "no_call_rate": 0.1757,
   "dangerous_errors": 1,
   "label_balance": {
     "R": 37,

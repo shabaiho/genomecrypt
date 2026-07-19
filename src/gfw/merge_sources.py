@@ -186,13 +186,15 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--organism", default="Klebsiella")
     ap.add_argument("--min-prevalence", type=int, default=3)
+    ap.add_argument("--snapshot", default="pinned",
+                    help="'pinned', 'latest', or an explicit PDG accession")
     args = ap.parse_args()
 
     from .ncbi_dataset import build
 
     cfg = Config.load()
     print("== NCBI base ==")
-    ncbi = build(args.organism, args.min_prevalence)
+    ncbi = build(args.organism, args.min_prevalence, args.snapshot)
     print(f"base: {ncbi['features'].shape[0]} genomes, {len(ncbi['labels'])} labels")
 
     print("\n== BV-BRC ==")

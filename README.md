@@ -32,10 +32,10 @@ does not design or modify organisms.
 |---|---|
 | Training genomes | 2,579 |
 | Laboratory measurements | 9,186 |
-| Features | 296 binary presence/absence |
+| Features | 297 binary presence/absence |
 | Model | L1 logistic regression, one per antibiotic |
-| Held-out AUROC | 0.894 ± 0.020 over 8 independent splits |
-| Held-out balanced accuracy | 0.790 ± 0.014 |
+| Held-out AUROC | 0.893 ± 0.019 over 8 independent splits |
+| Held-out balanced accuracy | 0.789 ± 0.014 |
 
 ---
 
@@ -50,7 +50,7 @@ flowchart TD
     C -->|passes| D{"Species check<br/>95% identity to<br/>chromosomal targets"}
     D -->|other species| X3["No verdict:<br/>model covers one species"]
     D -->|confirmed| E["AMRFinderPlus<br/>NCBI reference tool"]
-    E --> F["Feature vector<br/>296 binary columns"]
+    E --> F["Feature vector<br/>297 binary columns"]
     F --> G{"Determinants unseen<br/>in training over 30%?"}
     G -->|yes| X4["No verdict:<br/>out of distribution"]
     G -->|no| H["Logistic regression<br/>one model per antibiotic"]
@@ -95,7 +95,7 @@ as a second intercept.
 ## 3. The model
 
 One binary classifier per antibiotic. For a genome with feature vector
-*x* ∈ {0,1}²⁹⁶:
+*x* ∈ {0,1}²⁹⁷:
 
 ```
 log( p / (1 - p) )  =  β₀ + Σᵢ βᵢ · xᵢ
@@ -115,7 +115,7 @@ minimise   Σₙ wᵧ · loss( yₙ , βᵀxₙ )   +   (1/C) · ‖β‖₁
 ```
 
 The L1 term drives most coefficients to exactly zero, leaving 8–30 genes per
-antibiotic out of 296. `w` is the class weight, set inversely to class frequency.
+antibiotic out of 297. `w` is the class weight, set inversely to class frequency.
 
 **C is selected on a calibration block**, never on training data and never on test,
 using AUROC and a half-standard-error rule: the sparsest model whose score is
@@ -212,12 +212,12 @@ independent splits.
 
 | Antibiotic | n | Resistant | Genes used | AUROC | Balanced accuracy | PR-AUC | Brier | Recall (R) | Specificity | No verdict |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Ceftriaxone | 1,922 | 55% | 12 | 0.910 ± 0.021 | 0.796 ± 0.037 | 0.913 | 0.126 | 0.757 | 0.835 | 14% |
-| Meropenem | 1,884 | 46% | 24 | 0.909 ± 0.022 | 0.803 ± 0.031 | 0.867 | 0.123 | 0.812 | 0.794 | 23% |
-| Gentamicin | 1,805 | 44% | 30 | 0.897 ± 0.025 | 0.797 ± 0.021 | 0.866 | 0.126 | 0.711 | 0.883 | 22% |
-| Ciprofloxacin | 1,930 | 57% | 14 | 0.894 ± 0.034 | 0.789 ± 0.058 | 0.900 | 0.132 | 0.723 | 0.856 | 19% |
-| Trim./sulfa. | 1,645 | 60% | 8 | 0.862 ± 0.032 | 0.767 ± 0.049 | 0.874 | 0.146 | 0.731 | 0.802 | 29% |
-| **Average** | | | | **0.894 ± 0.020** | **0.790 ± 0.014** | 0.884 | 0.131 | 0.747 | 0.834 | 21% |
+| Meropenem | 1,884 | 46% | 21 | 0.909 ± 0.023 | 0.807 ± 0.035 | 0.868 | 0.121 | 0.844 | 0.770 | 23% |
+| Ceftriaxone | 1,922 | 55% | 22 | 0.909 ± 0.020 | 0.794 ± 0.037 | 0.912 | 0.126 | 0.753 | 0.835 | 14% |
+| Gentamicin | 1,805 | 44% | 31 | 0.895 ± 0.014 | 0.790 ± 0.029 | 0.863 | 0.127 | 0.688 | 0.893 | 14% |
+| Ciprofloxacin | 1,930 | 57% | 13 | 0.892 ± 0.032 | 0.787 ± 0.057 | 0.899 | 0.132 | 0.723 | 0.851 | 19% |
+| Trim./sulfa. | 1,645 | 60% | 8 | 0.862 ± 0.032 | 0.768 ± 0.048 | 0.875 | 0.147 | 0.736 | 0.800 | 30% |
+| **Average** | | | | **0.893 ± 0.019** | **0.789 ± 0.014** | 0.883 | 0.131 | 0.749 | 0.830 | 20% |
 
 A model answering "resistant" for every isolate scores balanced accuracy 0.500 and
 specificity 0.000 by construction.
@@ -230,10 +230,10 @@ scores 50%.
 
 | | |
 |---|---|
-| Verdicts given | 56 of 74 |
-| Matching the laboratory | **52 (92.9%)** |
-| No verdict | 18 (24%) |
-| Errors with resistance missed | 1 of 4 |
+| Verdicts given | 61 of 74 |
+| Matching the laboratory | **53 (86.9%)** |
+| No verdict | 13 (18%) |
+| Errors with resistance missed | 1 of 8 |
 
 ```bash
 uv run python scripts/demo_set_eval.py
@@ -289,6 +289,7 @@ Each was implemented and measured, paired across splits.
 | Features restricted to each drug's own class | −0.0248 AUROC | rejected: resistance genes co-travel on plasmids, so linked markers carry signal |
 | Dropping core-genome genes | −0.0139 AUROC | rejected |
 | Grouping by identical feature profile | −0.0032 (t = −0.20) | not needed: metrics were not inflated |
+| Splitting blaOXA carbapenemases from narrow-spectrum OXA | −0.0014 (t = −1.00) | kept anyway: accuracy is unchanged, but a single blaOXA family made the printed explanation wrong for one of the two mechanisms |
 
 ---
 
@@ -301,14 +302,17 @@ Each was implemented and measured, paired across splits.
    and 73% of NCBI ones, a consequence of records annotated by different
    AMRFinderPlus versions. Re-annotating every genome with one version is the fix
    and has not been done.
-3. **21% of questions receive no verdict.** Accuracy on the verdicts given is
-   0.92–0.94.
-4. **The demonstration cohort is 56 verdicts.** Enough to separate the model from a
-   constant answer; the interval on 92.9% is approximately ±7 points.
+3. **20% of questions receive no verdict.** On the demonstration cohort the
+   verdicts given were 86.9% correct.
+4. **The demonstration cohort is 61 verdicts.** Enough to separate the model from a
+   constant answer; the interval on 86.9% is approximately ±8 points.
 5. **Species checking requires the assembly.** Uploading an annotation file alone
    skips it.
 6. **Assembly size limits are species-specific** and currently hard-coded for
    *K. pneumoniae*.
+7. **The NCBI snapshot is pinned** to `PDG000000012.2470`. NCBI publishes
+   snapshots incrementally, and following "latest" once selected `.2471` when only
+   its `Metadata/` directory existed. Pass `--snapshot latest` to move deliberately.
 
 ---
 
@@ -337,10 +341,10 @@ model said.
 ## 10. Conclusion
 
 The system predicts resistance for five antibiotics in *K. pneumoniae* at AUROC
-0.894 ± 0.020 on genomes from lineages absent from training, using 8–30 named genes
+0.893 ± 0.019 on genomes from lineages absent from training, using 8–31 named genes
 per antibiotic in a model whose every coefficient is an odds ratio. On a balanced
-held-out cohort it matched the laboratory on 52 of the 56 verdicts it gave and
-declined the remaining 24%.
+held-out cohort it matched the laboratory on 53 of the 61 verdicts it gave and
+declined the remaining 18%.
 
 The coefficients recovered the established resistance mechanisms without being
 given them, which is the strongest available evidence that the model learned

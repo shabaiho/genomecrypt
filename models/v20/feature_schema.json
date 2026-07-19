@@ -201,6 +201,7 @@
     "genefam:blaOKP-A",
     "genefam:blaOKP-B",
     "genefam:blaOXA",
+    "genefam:blaOXA-48-like",
     "genefam:blaSCO",
     "genefam:blaSHV",
     "genefam:blaTEM",
@@ -297,7 +298,7 @@
     "trunc:ompK36",
     "trunc:ramR"
   ],
-  "n_features": 296,
+  "n_features": 297,
   "prevalence": {
     "gene:aac(3)-II": 0.0012,
     "gene:aac(3)-IId": 0.0423,
@@ -499,7 +500,8 @@
     "genefam:blaNDM": 0.0605,
     "genefam:blaOKP-A": 0.007,
     "genefam:blaOKP-B": 0.0233,
-    "genefam:blaOXA": 0.2493,
+    "genefam:blaOXA": 0.2144,
+    "genefam:blaOXA-48-like": 0.0651,
     "genefam:blaSCO": 0.0027,
     "genefam:blaSHV": 0.7069,
     "genefam:blaTEM": 0.299,

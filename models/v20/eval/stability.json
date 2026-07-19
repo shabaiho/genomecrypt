@@ -1,0 +1,368 @@
+{
+  "overall": {
+    "auroc": {
+      "mean": 0.8935,
+      "std": 0.0195
+    },
+    "balanced_accuracy": {
+      "mean": 0.7893,
+      "std": 0.0142
+    },
+    "balanced_accuracy_on_called": {
+      "mean": 0.8593,
+      "std": 0.0218
+    },
+    "brier": {
+      "mean": 0.1307,
+      "std": 0.0097
+    },
+    "f1": {
+      "mean": 0.7775,
+      "std": 0.0166
+    },
+    "no_call_rate": {
+      "mean": 0.1976,
+      "std": 0.0667
+    },
+    "pr_auc": {
+      "mean": 0.8832,
+      "std": 0.0212
+    },
+    "recall_resistant": {
+      "mean": 0.7487,
+      "std": 0.0583
+    },
+    "specificity": {
+      "mean": 0.8299,
+      "std": 0.0471
+    }
+  },
+  "per_drug": {
+    "ceftriaxone": {
+      "auroc": {
+        "max": 0.9475,
+        "mean": 0.9094,
+        "min": 0.8836,
+        "n": 8,
+        "std": 0.0203
+      },
+      "balanced_accuracy": {
+        "max": 0.8592,
+        "mean": 0.7939,
+        "min": 0.7423,
+        "n": 8,
+        "std": 0.0369
+      },
+      "balanced_accuracy_on_called": {
+        "max": 0.9401,
+        "mean": 0.8586,
+        "min": 0.7713,
+        "n": 8,
+        "std": 0.0687
+      },
+      "brier": {
+        "max": 0.1396,
+        "mean": 0.1263,
+        "min": 0.0873,
+        "n": 8,
+        "std": 0.0162
+      },
+      "f1": {
+        "max": 0.8584,
+        "mean": 0.7948,
+        "min": 0.7292,
+        "n": 8,
+        "std": 0.0485
+      },
+      "no_call_rate": {
+        "max": 0.3869,
+        "mean": 0.1398,
+        "min": 0.0026,
+        "n": 8,
+        "std": 0.1682
+      },
+      "pr_auc": {
+        "max": 0.9552,
+        "mean": 0.912,
+        "min": 0.8904,
+        "n": 8,
+        "std": 0.0214
+      },
+      "recall_resistant": {
+        "max": 0.9552,
+        "mean": 0.7534,
+        "min": 0.5858,
+        "n": 8,
+        "std": 0.1504
+      },
+      "specificity": {
+        "max": 0.9767,
+        "mean": 0.8345,
+        "min": 0.5294,
+        "n": 8,
+        "std": 0.1837
+      }
+    },
+    "ciprofloxacin": {
+      "auroc": {
+        "max": 0.9209,
+        "mean": 0.8918,
+        "min": 0.831,
+        "n": 8,
+        "std": 0.0317
+      },
+      "balanced_accuracy": {
+        "max": 0.8726,
+        "mean": 0.7871,
+        "min": 0.7135,
+        "n": 8,
+        "std": 0.0568
+      },
+      "balanced_accuracy_on_called": {
+        "max": 0.9599,
+        "mean": 0.8655,
+        "min": 0.7327,
+        "n": 8,
+        "std": 0.079
+      },
+      "brier": {
+        "max": 0.1854,
+        "mean": 0.1323,
+        "min": 0.1048,
+        "n": 8,
+        "std": 0.0285
+      },
+      "f1": {
+        "max": 0.8607,
+        "mean": 0.7765,
+        "min": 0.6185,
+        "n": 8,
+        "std": 0.0878
+      },
+      "no_call_rate": {
+        "max": 0.3391,
+        "mean": 0.1901,
+        "min": 0.032,
+        "n": 8,
+        "std": 0.1301
+      },
+      "pr_auc": {
+        "max": 0.9437,
+        "mean": 0.8987,
+        "min": 0.7951,
+        "n": 8,
+        "std": 0.0496
+      },
+      "recall_resistant": {
+        "max": 0.933,
+        "mean": 0.7228,
+        "min": 0.4724,
+        "n": 8,
+        "std": 0.1711
+      },
+      "specificity": {
+        "max": 0.9862,
+        "mean": 0.8514,
+        "min": 0.5361,
+        "n": 8,
+        "std": 0.1808
+      }
+    },
+    "gentamicin": {
+      "auroc": {
+        "max": 0.9255,
+        "mean": 0.895,
+        "min": 0.8841,
+        "n": 8,
+        "std": 0.0141
+      },
+      "balanced_accuracy": {
+        "max": 0.8309,
+        "mean": 0.7905,
+        "min": 0.7414,
+        "n": 8,
+        "std": 0.0287
+      },
+      "balanced_accuracy_on_called": {
+        "max": 0.9342,
+        "mean": 0.8321,
+        "min": 0.7742,
+        "n": 8,
+        "std": 0.0613
+      },
+      "brier": {
+        "max": 0.1395,
+        "mean": 0.1273,
+        "min": 0.1041,
+        "n": 8,
+        "std": 0.0104
+      },
+      "f1": {
+        "max": 0.7965,
+        "mean": 0.7519,
+        "min": 0.6606,
+        "n": 8,
+        "std": 0.0446
+      },
+      "no_call_rate": {
+        "max": 0.3939,
+        "mean": 0.135,
+        "min": 0.022,
+        "n": 8,
+        "std": 0.1465
+      },
+      "pr_auc": {
+        "max": 0.9065,
+        "mean": 0.8627,
+        "min": 0.8274,
+        "n": 8,
+        "std": 0.0274
+      },
+      "recall_resistant": {
+        "max": 0.9125,
+        "mean": 0.688,
+        "min": 0.518,
+        "n": 8,
+        "std": 0.136
+      },
+      "specificity": {
+        "max": 1.0,
+        "mean": 0.893,
+        "min": 0.6201,
+        "n": 8,
+        "std": 0.1448
+      }
+    },
+    "meropenem": {
+      "auroc": {
+        "max": 0.9437,
+        "mean": 0.9095,
+        "min": 0.872,
+        "n": 8,
+        "std": 0.0226
+      },
+      "balanced_accuracy": {
+        "max": 0.8576,
+        "mean": 0.8072,
+        "min": 0.745,
+        "n": 8,
+        "std": 0.0348
+      },
+      "balanced_accuracy_on_called": {
+        "max": 0.9566,
+        "mean": 0.8912,
+        "min": 0.8156,
+        "n": 8,
+        "std": 0.0513
+      },
+      "brier": {
+        "max": 0.1414,
+        "mean": 0.1212,
+        "min": 0.0847,
+        "n": 8,
+        "std": 0.0179
+      },
+      "f1": {
+        "max": 0.8753,
+        "mean": 0.7892,
+        "min": 0.6762,
+        "n": 8,
+        "std": 0.0603
+      },
+      "no_call_rate": {
+        "max": 0.3944,
+        "mean": 0.2276,
+        "min": 0.0,
+        "n": 8,
+        "std": 0.1643
+      },
+      "pr_auc": {
+        "max": 0.944,
+        "mean": 0.868,
+        "min": 0.7933,
+        "n": 8,
+        "std": 0.0499
+      },
+      "recall_resistant": {
+        "max": 0.9398,
+        "mean": 0.8438,
+        "min": 0.5491,
+        "n": 8,
+        "std": 0.151
+      },
+      "specificity": {
+        "max": 0.9757,
+        "mean": 0.7705,
+        "min": 0.6268,
+        "n": 8,
+        "std": 0.1244
+      }
+    },
+    "trimethoprim_sulfamethoxazole": {
+      "auroc": {
+        "max": 0.8972,
+        "mean": 0.8618,
+        "min": 0.8042,
+        "n": 8,
+        "std": 0.0321
+      },
+      "balanced_accuracy": {
+        "max": 0.8269,
+        "mean": 0.768,
+        "min": 0.6842,
+        "n": 8,
+        "std": 0.0484
+      },
+      "balanced_accuracy_on_called": {
+        "max": 0.9384,
+        "mean": 0.849,
+        "min": 0.6853,
+        "n": 8,
+        "std": 0.0802
+      },
+      "brier": {
+        "max": 0.1755,
+        "mean": 0.1467,
+        "min": 0.1202,
+        "n": 8,
+        "std": 0.0202
+      },
+      "f1": {
+        "max": 0.8571,
+        "mean": 0.7752,
+        "min": 0.6786,
+        "n": 8,
+        "std": 0.0655
+      },
+      "no_call_rate": {
+        "max": 0.5272,
+        "mean": 0.2954,
+        "min": 0.0056,
+        "n": 8,
+        "std": 0.2306
+      },
+      "pr_auc": {
+        "max": 0.943,
+        "mean": 0.8745,
+        "min": 0.8036,
+        "n": 8,
+        "std": 0.048
+      },
+      "recall_resistant": {
+        "max": 0.9661,
+        "mean": 0.7356,
+        "min": 0.5621,
+        "n": 8,
+        "std": 0.133
+      },
+      "specificity": {
+        "max": 0.8976,
+        "mean": 0.8003,
+        "min": 0.4024,
+        "n": 8,
+        "std": 0.1647
+      }
+    }
+  },
+  "seeds": 8
+}
