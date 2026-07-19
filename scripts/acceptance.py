@@ -13,6 +13,7 @@ a laptop with `uv sync` alone.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -29,7 +30,7 @@ from gfw.features import (  # noqa: E402
 )
 from gfw.predict import CALL_NONE, Predictor  # noqa: E402
 
-VERSION = "v17"
+VERSION = "v18"
 DEMO = ROOT / "data" / "demo"
 results: list[tuple[str, str, str]] = []
 
@@ -166,6 +167,49 @@ def main() -> None:
     check("safety: assembly QC accepts a complete genome", qc_ok["ok"],
           f"{qc_ok['total_bp'] / 1e6:.2f} Mb in {qc_ok['n_contigs']} contigs, "
           f"N50 {qc_ok['n50']:,}")
+
+    # ---- error bars and the held-out demonstration cohort ----
+    stab_path = bundle / "eval" / "stability.json"
+    if stab_path.exists():
+        stab = read_json(stab_path)
+        o = stab["overall"]
+        check("evidence: metrics repeated over independent splits",
+              stab["seeds"] >= 5,
+              f"{stab['seeds']} splits, AUROC {o['auroc']['mean']:.3f} "
+              f"+/- {o['auroc']['std']:.3f}, balanced accuracy "
+              f"{o['balanced_accuracy']['mean']:.3f} "
+              f"+/- {o['balanced_accuracy']['std']:.3f}")
+    else:
+        check("evidence: metrics repeated over independent splits", False,
+              "run python -m gfw.stability")
+
+    set_path = ROOT / "data" / "demo" / "demo_set.json"
+    if set_path.exists():
+        spec = json.loads(set_path.read_text())
+        Xd = pd.read_parquet(ROOT / "data/processed/features.parquet")
+        ok_calls = n_calls = 0
+        dangerous = 0
+        for g in spec["genomes"]:
+            gid = g["genome_id"]
+            if gid not in Xd.index:
+                continue
+            toks = {c for c in Xd.columns if Xd.at[gid, c] == 1}
+            for r in pred.predict_from_tokens(toks, gid).results:
+                want = g["phenotypes"].get(r.drug_id)
+                if want is None or r.call == CALL_NONE:
+                    continue
+                got = "R" if r.call == "likely_to_fail" else "S"
+                n_calls += 1
+                ok_calls += got == want
+                dangerous += (want == "R" and got == "S")
+        check("evidence: held-out cohort, not a single genome",
+              spec["n_genomes"] >= 10 and n_calls >= 40,
+              f"{spec['n_genomes']} unseen genomes, {n_calls} calls made, "
+              f"{ok_calls} correct ({ok_calls / max(1, n_calls):.1%}), "
+              f"{dangerous} missed resistances")
+    else:
+        check("evidence: held-out cohort, not a single genome", False,
+              "run scripts/build_demo_set.py")
 
     # ---- defensive by construction ----
     src = " ".join((ROOT / "src" / "gfw" / f).read_text()

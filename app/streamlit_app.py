@@ -203,6 +203,37 @@ with tab_card:
         st.info("No evaluation report yet — run `make eval`.")
     else:
         ev = read_json(ev_path)
+
+        # Point estimates come from one split. Measured spread across splits is
+        # +/- 0.047 AUROC, so a single number per drug overstates what is known.
+        stab_path = DEFAULT_MODEL_DIR / version / "eval" / "stability.json"
+        if stab_path.exists():
+            stab = read_json(stab_path)
+            st.markdown(f"**Repeated over {stab['seeds']} independent grouped splits** "
+                        f"— mean ± standard deviation")
+            band = {}
+            for drug, mm in stab["per_drug"].items():
+                band[drug] = {
+                    m.replace("_", " "): f"{mm[m]['mean']:.3f} ± {mm[m]['std']:.3f}"
+                    for m in ("balanced_accuracy", "auroc", "pr_auc", "brier",
+                              "recall_resistant", "specificity", "no_call_rate")
+                    if m in mm
+                }
+            st.dataframe(pd.DataFrame(band).T, use_container_width=True)
+            o = stab["overall"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Balanced accuracy",
+                      f"{o['balanced_accuracy']['mean']:.3f}",
+                      f"± {o['balanced_accuracy']['std']:.3f}", delta_color="off")
+            c2.metric("AUROC", f"{o['auroc']['mean']:.3f}",
+                      f"± {o['auroc']['std']:.3f}", delta_color="off")
+            c3.metric("Brier", f"{o['brier']['mean']:.3f}",
+                      f"± {o['brier']['std']:.3f}", delta_color="off")
+            st.caption("Each split re-draws the SNP-cluster grouping, so the spread "
+                       "reflects which lineages happen to land in the test set. "
+                       "Numbers below are the shipped split only.")
+
+        st.markdown("**Shipped split** (the model actually being served)")
         rows = {k: {m: v for m, v in d.items()
                     if m not in ("reliability", "trivial_baseline")}
                 for k, d in ev["per_drug"].items()}

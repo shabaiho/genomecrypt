@@ -26,7 +26,7 @@ from gfw.predict import Predictor  # noqa: E402
 DEMO = ROOT / "data" / "demo"
 FASTA = DEMO / "GCA_000417485.1.fna"
 TSV = DEMO / "GCA_000417485.1.tsv"
-VERSION = "v17"
+VERSION = "v18"
 
 rows: list[tuple[str, str, str]] = []
 

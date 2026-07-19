@@ -32,7 +32,7 @@ from gfw.predict import Predictor  # noqa: E402
 
 DEMO = ROOT / "data" / "demo"
 FASTA = DEMO / "GCA_000417485.1.fna"
-VERSION = "v17"
+VERSION = "v18"
 ORGANISM = "Klebsiella_pneumoniae"
 
 

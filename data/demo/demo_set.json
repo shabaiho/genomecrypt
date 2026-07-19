@@ -1,0 +1,172 @@
+{
+  "species": "Klebsiella pneumoniae",
+  "n_genomes": 15,
+  "n_labels": 74,
+  "note": "Selected before training and excluded from train/calib/thresh together with their whole SNP clusters. Phenotypes are the lab antibiograms, never shown to the model.",
+  "genomes": [
+    {
+      "genome_id": "PDT000015895.2",
+      "cluster": 306,
+      "phenotypes": {
+        "ciprofloxacin": "S",
+        "gentamicin": "S",
+        "meropenem": "R",
+        "trimethoprim_sulfamethoxazole": "S"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_003936515",
+      "cluster": 39,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "R",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_003937075",
+      "cluster": 43,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "S",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_003937125",
+      "cluster": 44,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "S",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_003937145",
+      "cluster": 46,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "S",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_003937475",
+      "cluster": 51,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "S",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_003937525",
+      "cluster": 52,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "S",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_003938235",
+      "cluster": 53,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "S",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "trimethoprim_sulfamethoxazole": "S"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_003944905",
+      "cluster": 56,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "R",
+        "gentamicin": "R",
+        "meropenem": "R",
+        "trimethoprim_sulfamethoxazole": "S"
+      }
+    },
+    {
+      "genome_id": "BV:GCA_904863435",
+      "cluster": 301,
+      "phenotypes": {
+        "ceftriaxone": "R",
+        "ciprofloxacin": "S",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "trimethoprim_sulfamethoxazole": "S"
+      }
+    },
+    {
+      "genome_id": "PDT000077414.3",
+      "cluster": 343,
+      "phenotypes": {
+        "ciprofloxacin": "R",
+        "gentamicin": "S",
+        "meropenem": "S",
+        "ceftriaxone": "R",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "PDT000084306.3",
+      "cluster": 345,
+      "phenotypes": {
+        "ciprofloxacin": "R",
+        "gentamicin": "S",
+        "meropenem": "R",
+        "ceftriaxone": "R",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "PDT000084309.3",
+      "cluster": 346,
+      "phenotypes": {
+        "ciprofloxacin": "R",
+        "gentamicin": "S",
+        "meropenem": "R",
+        "ceftriaxone": "R",
+        "trimethoprim_sulfamethoxazole": "R"
+      }
+    },
+    {
+      "genome_id": "PDT000101134.2",
+      "cluster": 347,
+      "phenotypes": {
+        "ciprofloxacin": "S",
+        "gentamicin": "R",
+        "meropenem": "R",
+        "ceftriaxone": "R",
+        "trimethoprim_sulfamethoxazole": "S"
+      }
+    },
+    {
+      "genome_id": "PDT000130445.2",
+      "cluster": 362,
+      "phenotypes": {
+        "ciprofloxacin": "R",
+        "gentamicin": "R",
+        "meropenem": "S",
+        "ceftriaxone": "R",
+        "trimethoprim_sulfamethoxazole": "S"
+      }
+    }
+  ]
+}

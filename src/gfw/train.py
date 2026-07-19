@@ -169,12 +169,18 @@ def main() -> None:
     # drugs, which would have made the "never seen in training" claim false while
     # the demo still looked fine. Excluding it by id (and by SNP cluster, so its
     # close relatives go too) keeps the claim true whatever the data does next.
-    demo_path = REPO_ROOT / "data" / "demo" / "truth.json"
+    import json as _json
+
     demo_ids: set[str] = set()
+    demo_path = REPO_ROOT / "data" / "demo" / "truth.json"
     if demo_path.exists():
-        import json as _json
         t = _json.loads(demo_path.read_text())
-        demo_ids = {t.get("isolate"), t.get("sample_id")} - {None}
+        demo_ids |= {t.get("isolate"), t.get("sample_id")} - {None}
+    # the whole demonstration cohort, selected model-free by
+    # scripts/build_demo_set.py before any training run
+    set_path = REPO_ROOT / "data" / "demo" / "demo_set.json"
+    if set_path.exists():
+        demo_ids |= {g["genome_id"] for g in _json.loads(set_path.read_text())["genomes"]}
     labels = pd.read_csv(args.labels)
     groups = pd.read_csv(args.groups).set_index("genome_id")["group_id"]
 
