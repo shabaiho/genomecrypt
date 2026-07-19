@@ -32,6 +32,9 @@ from gfw.features import determinants, parse_amrfinder_tsv, sniff_file_type  # n
 from gfw.gate import detect_targets, verify_species  # noqa: E402
 from gfw.predict import CALL_FAIL, CALL_NONE, CALL_WORK, Predictor  # noqa: E402
 from gfw.qc import check_assembly  # noqa: E402
+from gfw.storage import (  # noqa: E402
+    already_annotated, save_annotation, save_report, save_upload,
+)
 
 st.set_page_config(page_title="Genome Firewall", layout="wide")
 
@@ -199,6 +202,8 @@ with tab_report:
             # parsed as a TSV, yielding zero determinants and a confident
             # "likely to work" for a blaKPC-positive genome.
             kind = sniff_file_type(src)
+            # keep the raw file before anything can fail on it
+            digest = save_upload(up.getvalue(), up.name, kind) if kind != "unknown" else None
             if kind == "protein_fasta":
                 notice("stop", "This is a protein FASTA. Upload the assembled genome "
                                "(nucleotide sequence).")
@@ -217,8 +222,15 @@ with tab_report:
                 if not assembly_qc["ok"]:
                     problems.append(assembly_qc["reason"])
                 problems.extend(assembly_qc.get("warnings", []))
-                with st.spinner("Reading the genome…"):
-                    tsv = run_amrfinder(src, Path(td) / "amr.tsv", pred.cfg.species_taxgroup)
+                cached = already_annotated(digest) if digest else None
+                if cached is not None:
+                    tsv = cached
+                else:
+                    with st.spinner("Reading the genome…"):
+                        tsv = run_amrfinder(src, Path(td) / "amr.tsv",
+                                            pred.cfg.species_taxgroup)
+                    if digest:
+                        save_annotation(digest, tsv)
                 try:
                     targets = detect_targets(src)
                     species_check = verify_species(src)
@@ -240,6 +252,8 @@ with tab_report:
                                            assembly_qc=assembly_qc)
             tokens = determinants(parse_amrfinder_tsv(tsv))
             n_det = len(tokens)
+            if digest:
+                save_report(digest, pred.meta.get("version", version), report.to_dict())
 
         avoid = [r for r in report.results if r.call == CALL_FAIL]
         maybe = [r for r in report.results if r.call == CALL_WORK]
