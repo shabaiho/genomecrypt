@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+import threading
 import uuid
 from pathlib import Path
 
@@ -154,6 +155,28 @@ def kpi(col, label: str, value: str, sub: str = "") -> None:
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "data" / "demo" / "GCA_000417485.1.fna"
 
+# AMRFinderPlus spawns blastn and hmmer, each peaking near a gigabyte. Two
+# concurrent runs are what crashed this app: starting an upload while the example
+# was still being analysed made Streamlit re-run the script, a second annotation
+# began beside the first, and the process died on memory. One at a time.
+ANNOTATE_LOCK = threading.Lock()
+
+
+@st.cache_data(show_spinner=False, max_entries=4)
+def read_pending(kind: str, ref: str) -> tuple[bytes, str]:
+    """Resolve a queued sample to bytes, lazily.
+
+    The reference is what lives in session state -- a path or a content digest,
+    never the file itself. Holding 5.5 MB of genome in session state meant every
+    interaction copied it.
+    """
+    if kind == "example":
+        return EXAMPLE.read_bytes(), EXAMPLE.name
+    loaded = load_sample(ref)
+    if loaded is None:
+        return b"", ref
+    return loaded[0], loaded[1]
+
 
 def browser_id() -> str:
     """A random id kept in the page URL.
@@ -223,7 +246,7 @@ with tab_report:
                 "found it resistant to meropenem and susceptible to ciprofloxacin, "
                 "gentamicin and trimethoprim/sulfamethoxazole.")
             if ex2.button("Analyse example", type="primary", use_container_width=True):
-                st.session_state["pending"] = (EXAMPLE.read_bytes(), EXAMPLE.name)
+                st.session_state["pending"] = ("example", "")
                 st.rerun()
 
     # History for this browser. Clicking an entry re-opens the stored file.
@@ -242,15 +265,13 @@ with tab_report:
                     f" {counts.get('likely_to_work', 0)} may work,"
                     f" {counts.get('no_call', 0)} no verdict")
                 if hc3.button("Open", key=f"h_{h['digest']}", use_container_width=True):
-                    loaded = load_sample(h["digest"])
-                    if loaded:
-                        st.session_state["pending"] = (loaded[0], loaded[1])
-                        st.rerun()
+                    st.session_state["pending"] = ("stored", h["digest"])
+                    st.rerun()
 
     # a re-opened or example file behaves exactly like a fresh upload
     pending = st.session_state.pop("pending", None)
     if pending is not None:
-        payload, payload_name = pending
+        payload, payload_name = read_pending(*pending)
     elif up is not None:
         payload, payload_name = up.getvalue(), up.name
     else:
@@ -292,10 +313,17 @@ with tab_report:
                     tsv = cached
                 else:
                     with st.spinner("Reading the genome…"):
-                        tsv = run_amrfinder(src, Path(td) / "amr.tsv",
-                                            pred.cfg.species_taxgroup)
-                    if digest:
-                        save_annotation(digest, tsv)
+                        # serialise: two annotations at once exhaust memory
+                        with ANNOTATE_LOCK:
+                            again = already_annotated(digest) if digest else None
+                            if again is not None:
+                                tsv = again
+                            else:
+                                tsv = run_amrfinder(src, Path(td) / "amr.tsv",
+                                                    pred.cfg.species_taxgroup,
+                                                    threads=2)
+                                if digest:
+                                    save_annotation(digest, tsv)
                 try:
                     targets = detect_targets(src)
                     species_check = verify_species(src)
