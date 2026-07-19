@@ -33,30 +33,90 @@ from gfw.gate import detect_targets, verify_species  # noqa: E402
 from gfw.predict import CALL_FAIL, CALL_NONE, CALL_WORK, Predictor  # noqa: E402
 from gfw.qc import check_assembly  # noqa: E402
 
-st.set_page_config(page_title="Genome Firewall", page_icon="🧬", layout="wide")
+st.set_page_config(page_title="Genome Firewall", layout="wide")
 
 st.markdown("""
 <style>
-  .block-container {padding-top: 2rem; max-width: 1200px;}
-  .kpi {background: var(--secondary-background-color); border-radius: 10px;
-        padding: 14px 18px; height: 100%;}
-  .kpi .label {font-size: .72rem; letter-spacing: .09em; text-transform: uppercase;
+  .block-container {padding-top: 2rem; max-width: 1240px;}
+  html, body, [class*="css"] {font-size: 17px;}
+
+  .kpi {background: var(--secondary-background-color); border-radius: 12px;
+        padding: 18px 22px; height: 100%;}
+  .kpi .label {font-size: .85rem; letter-spacing: .08em; text-transform: uppercase;
                opacity: .6;}
-  .kpi .value {font-size: 1.5rem; font-weight: 650; line-height: 1.25; margin-top: 2px;}
-  .kpi .sub {font-size: .8rem; opacity: .65;}
-  .drug {border-radius: 10px; padding: 14px 18px; margin-bottom: 10px;
-         background: var(--secondary-background-color); border-left: 5px solid #999;}
+  .kpi .value {font-size: 2rem; font-weight: 650; line-height: 1.2; margin-top: 4px;}
+  .kpi .sub {font-size: 1rem; opacity: .7; margin-top: 2px;}
+
+  .drug {border-radius: 12px; padding: 18px 22px; margin-bottom: 12px;
+         background: var(--secondary-background-color); border-left: 6px solid #999;
+         display: flex; gap: 16px; align-items: flex-start;}
   .drug.fail {border-left-color: #d64545;}
   .drug.work {border-left-color: #2f9e44;}
-  .drug.none {border-left-color: #adb5bd;}
-  .drug .name {font-size: 1.1rem; font-weight: 650;}
-  .drug .why {font-size: .93rem; opacity: .88; margin-top: 3px;}
-  .drug .pct {float: right; font-size: .85rem; opacity: .45;
-              font-variant-numeric: tabular-nums;}
-  .grouphead {font-size: .78rem; letter-spacing: .1em; text-transform: uppercase;
-              opacity: .65; margin: 22px 0 8px;}
+  .drug.none {border-left-color: #9aa0a6;}
+  .drug .ico {flex: 0 0 auto; margin-top: 3px;}
+  .drug.fail .ico {color: #d64545;}
+  .drug.work .ico {color: #2f9e44;}
+  .drug.none .ico {color: #9aa0a6;}
+  .drug .body {flex: 1 1 auto;}
+  .drug .name {font-size: 1.5rem; font-weight: 650; line-height: 1.2;}
+  .drug .why {font-size: 1.12rem; opacity: .9; margin-top: 6px; line-height: 1.45;}
+  .drug .pct {flex: 0 0 auto; font-size: 1rem; opacity: .45;
+              font-variant-numeric: tabular-nums; margin-top: 6px;}
+
+  .grouphead {font-size: 1.05rem; letter-spacing: .07em; text-transform: uppercase;
+              font-weight: 600; opacity: .7; margin: 30px 0 12px;}
+
+  .notice {display: flex; gap: 14px; align-items: flex-start; border-radius: 12px;
+           padding: 16px 20px; margin: 12px 0; font-size: 1.08rem; line-height: 1.5;
+           border: 1px solid transparent;}
+  .notice .ico {flex: 0 0 auto; margin-top: 2px;}
+  .notice.warn {background: rgba(214,145,45,.12); border-color: rgba(214,145,45,.35);
+                color: inherit;}
+  .notice.warn .ico {color: #d6912d;}
+  .notice.stop {background: rgba(214,69,69,.12); border-color: rgba(214,69,69,.35);}
+  .notice.stop .ico {color: #d64545;}
+  .notice.note {background: rgba(90,120,180,.12); border-color: rgba(90,120,180,.32);}
+  .notice.note .ico {color: #5a78b4;}
 </style>
 """, unsafe_allow_html=True)
+
+# Inline SVG, sized in em so it scales with the surrounding text. No emoji anywhere
+# in this interface: emoji render differently on every platform and read as
+# decoration on a clinical screen.
+SVG = {
+    "warn": '<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            'stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 '
+            '0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/>'
+            '<line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    "stop": '<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            'stroke-linejoin="round"><circle cx="12" cy="12" r="10"/>'
+            '<line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>',
+    "note": '<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+            'stroke-linejoin="round"><circle cx="12" cy="12" r="10"/>'
+            '<line x1="12" y1="16" x2="12" y2="12"/>'
+            '<line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    "check": '<svg class="ico" width="26" height="26" viewBox="0 0 24 24" fill="none" '
+             'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
+             'stroke-linejoin="round"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/>'
+             '<polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    "ban": '<svg class="ico" width="26" height="26" viewBox="0 0 24 24" fill="none" '
+           'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
+           'stroke-linejoin="round"><circle cx="12" cy="12" r="10"/>'
+           '<line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>',
+    "dash": '<svg class="ico" width="26" height="26" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" '
+            'stroke-linejoin="round"><circle cx="12" cy="12" r="10"/>'
+            '<line x1="8" y1="12" x2="16" y2="12"/></svg>',
+}
+
+
+def notice(kind: str, text: str) -> None:
+    """Alert box without Streamlit's built-in emoji icons."""
+    st.markdown(f'<div class="notice {kind}">{SVG[kind]}<div>{text}</div></div>',
+                unsafe_allow_html=True)
 
 # Why a drug got no verdict, stated as fact.
 NO_VERDICT_REASON = {
@@ -92,12 +152,13 @@ def as_dicts(supporting) -> list[dict]:
     return [s if isinstance(s, dict) else s.__dict__ for s in supporting]
 
 
-st.title("🧬 Genome Firewall")
+st.title("Genome Firewall")
 st.caption("Antibiotic-response prediction from a bacterial genome — research prototype")
 
 available = bundles()
 if not available:
-    st.warning(f"No model bundle found in `{DEFAULT_MODEL_DIR}`. Train one first: `make train`.")
+    notice("stop", f"No model bundle found in <code>{DEFAULT_MODEL_DIR}</code>. "
+                   f"Train one first: <code>make train</code>.")
     st.stop()
 
 with st.sidebar:
@@ -118,9 +179,9 @@ tab_report, tab_tech = st.tabs(["Antibiotic report", "For reviewers"])
 
 # ---------------------------------------------------------------- report ---
 with tab_report:
-    st.info(
-        "**Decision support only.** Every result requires confirmation by standard "
-        "laboratory susceptibility testing before it informs treatment.", icon="⚠️")
+    notice("note", "<b>Decision support only.</b> Every result requires confirmation "
+                   "by standard laboratory susceptibility testing before it informs "
+                   "treatment.")
 
     up = st.file_uploader(
         "Upload an assembled genome (FASTA) or AMRFinderPlus output (TSV)",
@@ -139,17 +200,18 @@ with tab_report:
             # "likely to work" for a blaKPC-positive genome.
             kind = sniff_file_type(src)
             if kind == "protein_fasta":
-                st.error("This is a protein FASTA. Upload the assembled genome "
-                         "(nucleotide sequence).")
+                notice("stop", "This is a protein FASTA. Upload the assembled genome "
+                               "(nucleotide sequence).")
                 st.stop()
             if kind == "unknown":
-                st.error("This file is neither a genome FASTA nor AMRFinderPlus output.")
+                notice("stop", "This file is neither a genome FASTA nor "
+                               "AMRFinderPlus output.")
                 st.stop()
 
             if kind == "fasta":
                 if not amrfinder_available():
-                    st.error("Genome uploaded, but the annotation tool is not installed "
-                             "on this machine. Run `make tools`.")
+                    notice("stop", "Genome uploaded, but the annotation tool is not "
+                                   "installed on this machine. Run <code>make tools</code>.")
                     st.stop()
                 assembly_qc = check_assembly(src)
                 if not assembly_qc["ok"]:
@@ -216,29 +278,31 @@ with tab_report:
             "avoid · may work · none")
 
         for p in problems:
-            st.warning(p, icon="⚠️")
+            notice("warn", p)
 
         def drug_card(r, css: str, prob: bool = True) -> None:
-            pct = (f'<span class="pct">{r.confidence:.0%}</span>'
+            pct = (f'<div class="pct">{r.confidence:.0%}</div>'
                    if prob and r.confidence is not None else "")
             if r.call == CALL_NONE:
                 why = NO_VERDICT_REASON.get(
                     r.reason, "The evidence does not support a verdict.")
             else:
                 why = headline_evidence(as_dicts(r.supporting), r.call)
+            ico = {"fail": SVG["ban"], "work": SVG["check"], "none": SVG["dash"]}[css]
             st.markdown(
-                f'<div class="drug {css}">{pct}<div class="name">{r.display}</div>'
-                f'<div class="why">{why.replace("**", "")}</div></div>',
-                unsafe_allow_html=True)
+                f'<div class="drug {css}">{ico}'
+                f'<div class="body"><div class="name">{r.display}</div>'
+                f'<div class="why">{why.replace("**", "")}</div></div>'
+                f'{pct}</div>', unsafe_allow_html=True)
 
             if r.call == CALL_NONE:
                 found = detected_mechanisms(as_dicts(r.supporting))
                 if found:
-                    st.warning(
-                        "A resistance mechanism was detected for this drug: "
-                        + "; ".join(x.replace("**", "") for x in found)
-                        + ". The model gave no verdict; this detection does not "
-                          "depend on the model.", icon="⚠️")
+                    notice("warn",
+                           "A resistance mechanism was detected for this drug: "
+                           + "; ".join(x.replace("**", "") for x in found)
+                           + ". The model gave no verdict; this detection does not "
+                             "depend on the model.")
             else:
                 extra = supporting_sentences(as_dicts(r.supporting), r.call)
                 if extra:
@@ -264,10 +328,10 @@ with tab_report:
                 drug_card(r, "none", prob=False)
 
         if report.unknown_determinants:
-            st.warning(
-                f"{len(report.unknown_determinants)} resistance markers in this genome "
-                f"are absent from the reference set "
-                f"(`{', '.join(report.unknown_determinants[:5])}`).", icon="⚠️")
+            notice("warn",
+                   f"{len(report.unknown_determinants)} resistance markers in this "
+                   f"genome are absent from the reference set: "
+                   f"<code>{', '.join(report.unknown_determinants[:5])}</code>.")
 
         stab_path = DEFAULT_MODEL_DIR / version / "eval" / "stability.json"
         cohort_path = DEFAULT_MODEL_DIR / version / "eval" / "demo_cohort.json"
@@ -313,7 +377,7 @@ with tab_report:
 with tab_tech:
     ev_path = DEFAULT_MODEL_DIR / version / "eval" / "report.json"
     if not ev_path.exists():
-        st.info("No evaluation report yet — run `make eval`.")
+        notice("note", "No evaluation report yet — run <code>make eval</code>.")
     else:
         ev = read_json(ev_path)
 
